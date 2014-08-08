@@ -60,8 +60,28 @@ can select only second one, otherwise properties for `1` will not hold.
 
 Now we can add a simple Fractional instance.
 
+We say that $(S b y) = \cfrac{1}{(S a x)}$ iff $(S b y)$ is the solution of
+equation $(S b y) (S a x) = 1$. So the following intance is the result of
+this system of equations:
+\begin{eqnarray}
+  b_0 a_0 = 1,\\
+  b_0 a_1 + b_1 a_0 = 0,\\
+  b_0 a_2 + b_1 a_1 + a_2 a_0 = 0,\\
+  \ldots
+\end{eqnarray}
+
+These equations can be resursively solved by moving the last term from left-side
+convolutions to the right side, and dividing by $(-a_0)$. Moreover the rest of
+terms on the left are convolutions too, then as now series $a$ convolve with the tail
+of series $b$. That fact may be used for compact of definition of recursive equations:
+\begin{eqnarray}
+  b_0 = \cfrac{1}{a_0},\\
+  b_i = \cfrac{-1}{a_0} \sum\limits_{j = 0}{i - 1} b_{j} a_{j + 1}.
+\end{eqnarray}
+
 > instance Fractional a => Fractional (S a) where
->   fromRational x = S (fromRational x) (fromRational x)
+>   recip (S a x) = let y = fmap (/ (-a)) (S (-1) (x * y)) in y
+>   fromRational x = S (fromRational x) 0
 
 In order to inspect a stream we can introduce a helper function:
 
