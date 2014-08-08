@@ -92,7 +92,7 @@ In order to inspect a stream we can introduce a helper function:
 Here all functions will be prefixed with `s` however if you write a module for working
 with streams you may prefer to not add it and ask user to import module qualified.
 
-Here is a function that builds a stream from the list:
+Here is a function that builds a stream from the list (and the other way):
 
 > fromList :: [a] -> S a
 > fromList (x:xs) = S x (fromList xs) -- works only on infinite list
@@ -100,7 +100,9 @@ Here is a function that builds a stream from the list:
 > fromListNum :: Num a => [a] -> S a
 > fromListNum [] = 0
 > fromListNum (x:xs) = S x (fromListNum xs)
-
+>
+> toList :: S a -> [a]
+> toList (S x xs) = x : toList xs
 
 In order to write an usefull functions and series we will introduce a folding:
 
