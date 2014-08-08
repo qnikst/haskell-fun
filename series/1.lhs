@@ -5,7 +5,7 @@ take a Taylor series.
 
 For a function we can write a Taylor series expansion:
 
-\[ f(x) = f(x_0) + \sum_{k=1}\frac{f^(k)}{k!}(x-x_0)^k \]
+$$ f(x) = f(x_0) + \sum_{k=1}\frac{f^(k)}{k!}(x-x_0)^k $$
 
 And I want to implement a small amount of code that can work
 with such representations.
@@ -100,7 +100,7 @@ Build a stream by iterating a function
 > siterate :: (a -> a) -> a -> S a
 > siterate f x = S x (siterate f (f x))
 
-Build a serie of powers: <x,x^2,x^3,...>
+Build a serie of powers: $<x,x^2,x^3,...>$
 
 > spower x = siterate (*x) x
 
