@@ -30,11 +30,17 @@ Series is a Functor:
 Also we may give a 'Num' instance for simplicity:
 
 > instance Num a => Num (S a) where
->   (S a x) + (S b y) = S (a+b) (x+y)
+>   (S a x) + (S b y) = S (a + b) (x + y)
+>   (S a x) - (S b y) = S (a - b) (x - y)
 >   abs s = fmap abs s
 >   signum s = fmap signum s
 >   (S a x) * (S b y) = S (a * b) (fmap (* a) y + fmap (*b) x + S 0 (x * y))
 >   fromInteger x = S (fromInteger x) 0
+
+And pointwise product for future:
+
+> (~*~) :: Num a => S a -> S a -> S a
+> (S a x) ~*~ (S b y) = S (a * b) (x ~*~ y)
 
 Here are 2 tricky parts, first one is implementation of `*` second one
 is implementation of `fromInteger`. For `*` we need to thing of an expansion
@@ -82,6 +88,46 @@ of series $b$. That fact may be used for compact of definition of recursive equa
 > instance Fractional a => Fractional (S a) where
 >   recip (S a x) = let y = fmap (/ (-a)) (S (-1) (x * y)) in y
 >   fromRational x = S (fromRational x) 0
+
+Formulas for composition and inversion:
+
+> compose :: (Num a, Eq a) => S a -> S a -> S a
+> compose (S a x) (S 0 y) = S a (y * compose x (S 0 y))
+> compose _ _ = error "compose: Non-zero head"
+
+> inverse :: (Fractional a, Eq a) => S a -> S a
+> inverse (S 0 x) = let y = S 0 (recip $ compose x y) in y
+> inverse _ = error "inverse: Non-zero head"
+
+Floating instance:
+
+> instance (Floating a, Eq a) => Floating (S a) where
+>   pi = S pi 0
+>   exp (S a x) = fmap (* exp a) (texp `compose` S 0 x)
+>   log (S a x) = S (log a) 0 + (inverse (texp - 1) `compose` (S 0 $ fmap (/ a) x))
+>   sin (S 0 x) = tsin `compose` S 0 x
+>   sin (S a x) = fmap (* sin a) (cos (S 0 x)) + fmap (* cos a) (sin (S 0 x))
+>   cos (S 0 x) = tcos `compose` S 0 x
+>   cos (S a x) = fmap (* cos a) (cos (S 0 x)) - fmap (* sin a) (sin (S 0 x))
+>   sqrt (S a x) = let sqa = sqrt a
+>                      sqx = fmap (/ (2 * a)) (x - S 0 (sqx * sqx))
+>                  in S sqa sqx
+>   asin (S 0 x) = tasin `compose` S 0 x
+>   asin (S a x) = let S _ y = fmap (* sqrt (1 - a * a)) (S a x) -
+>                              fmap (* a) (sqrt (1 - (S a x) * (S a x)))
+>                  in S (asin a) 0 + asin (S 0 y)
+>   acos (S 0 x) = tacos `compose` S 0 x
+>   acos (S a x) = let S _ y = fmap (* a) (S a x) -
+>                              fmap (* sqrt (1 - a * a)) (sqrt (1 - (S a x) * (S a x)))
+>                  in S (acos a) 0 + acos (S 0 y)
+>   atan (S 0 x) = tatan `compose` S 0 x
+>   atan (S a x) = let S _ y = S 0 x / (1 + fmap (* a) (S a x))
+>                  in S (atan a) 0 + atan (S 0 y)
+>   sinh = undefined
+>   cosh = undefined
+>   asinh = undefined
+>   acosh = undefined
+>   atanh = undefined
 
 In order to inspect a stream we can introduce a helper function:
 
@@ -172,6 +218,25 @@ This is an actual building of the Taylor serie:
 
 > texp :: Fractional a => S a
 > texp = S 1 sdfac
+
+> tsin :: Fractional a => S a
+> tsin = let s = S 0 . S 1 . S 0 . S (-1) $ s
+>        in s ~*~ texp
+
+> tcos :: Fractional a => S a
+> tcos = let s = S 1 . S 0 . S (-1) . S 0 $ s
+>        in s ~*~ texp
+
+> tasin :: Fractional a => S a
+> tasin = let go n = S (1 / n) (fmap (* (n / (n + 1))) . S 0 $ go (n + 2))
+>         in S 0 (go 1)
+
+> tacos :: (Eq a, Floating a) => S a
+> tacos = pi / 2 - tasin
+
+> tatan :: Fractional a => S a
+> tatan = let go s n = S (s / n) . S 0 $ go (-s) (n + 2)
+>         in S 0 $ go 1 1
 
 > test1 = eps 0.05 $ build 1 texp
 
