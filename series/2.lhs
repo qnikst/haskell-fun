@@ -13,6 +13,7 @@ Also we may give a 'Num' instance for simplicity:
 > instance Num a => Num (T a) where
 >   (T x) + (T y) = T (S.zipWith (+) x y)
 >   abs s = fmap abs s
+>   negate s = fmap negate s
 >   signum s = fmap signum s
 >   (T (Cons a x)) * (T (Cons b y)) = T $ (a * b) <:> unT ( T (fmap (*a) y) + T (fmap (*b) x) + T (0 <:> unT (T x * T y)))
 >   fromInteger x = T $ (fromInteger x) <:> unT 0

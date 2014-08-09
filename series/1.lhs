@@ -1,4 +1,5 @@
 > {-# LANGUAGE BangPatterns #-}
+> import Control.Monad.Fix
 
 I want to play a bit with series expansion, for an example I'll
 take a Taylor series.
@@ -32,6 +33,7 @@ Also we may give a 'Num' instance for simplicity:
 > instance Num a => Num (S a) where
 >   (S a x) + (S b y) = S (a+b) (x+y)
 >   abs s = fmap abs s
+>   negate s = fmap negate s
 >   signum s = fmap signum s
 >   (S a x) * (S b y) = S (a * b) (fmap (* a) y + fmap (*b) x + S 0 (x * y))
 >   fromInteger x = S (fromInteger x) 0
@@ -80,7 +82,8 @@ of series $b$. That fact may be used for compact of definition of recursive equa
 \end{eqnarray}
 
 > instance Fractional a => Fractional (S a) where
->   recip (S a x) = let y = fmap (/ (-a)) (S (-1) (x * y)) in y
+>   -- recip (S a x) = let y = fmap (/ (-a)) (S (-1) (x * y)) in y
+>   recip (S a x) = fix $ S (-1) . (* (fmap (/ (-a)) x))
 >   fromRational x = S (fromRational x) 0
 
 In order to inspect a stream we can introduce a helper function:
