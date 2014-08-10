@@ -38,17 +38,15 @@ Also we may give a 'Num' instance for simplicity:
 >   (S a x) * (S b y) = S (a * b) (fmap (* a) y + fmap (*b) x + S 0 (x * y))
 >   fromInteger x = S (fromInteger x) 0
 
-And pointwise product for future:
-
 Here are 2 tricky parts, first one is implementation of `*` second one
-is implementation of `fromInteger`. For `*` we need to thing of an expansion
-like of polymonial, i.e. `S a b = a + b * x`. Then we can write the following:
+is implementation of `fromInteger`. For `*` we need to think of an expansion
+like of polymonial, i.e. `S a b = a + b \cdot p`. Then we can write the following:
 
 \begin{eqnarray}
- (S a x) * (S b y) = (a + x p) * (b + y p) = \\
-  = (a b + a y p + b x p + x y p^2) = \\
-  = S (a b) (a y + b x + x y p)     = \\
-  = S (a b) (fmap (*a) y + fmap (*b) x + S 0 (x * y))
+ (S~a~x) * (S~b~y) &=& (a + x p) * (b + y p) = \\
+  &=& (a b + a y p + b x p + x y p^2) = \\
+  &=& S~(a b)~(a y + b x + x y p)     = \\
+  &=& S~(a b)~(fmap~(*a)~y + fmap~(*b)~x + S~0~(x * y))
 \end{eqnarray}
 
 There are 2 possible implementations for fromInteger:
@@ -65,7 +63,7 @@ can select only second one, otherwise properties for `1` will not hold.
 Now we can add a simple Fractional instance.
 
 We say that $(S~b~y) = \cfrac{1}{(S~a~x)}$ iff $(S~b~y)$ is the solution of
-equation $(S~b~y) \, (S~a~x) = 1$. So the following intance is the result of
+equation $(S~b~y) * (S~a~x) = 1$. So the following intance is the result of
 this system of equations:
 \begin{eqnarray}
   b_0 a_0 = 1,\\
@@ -85,20 +83,92 @@ of series $b$. That fact may be used for compact of definition of recursive equa
 
 > instance Fractional a => Fractional (S a) where
 >   -- recip (S a x) = let y = fmap (/ (-a)) (S (-1) (x * y)) in y
->   recip (S a x) = fix $ S (-1) . (* (fmap (/ (-a)) x))
+>   recip (S a x) = fix $ fmap (/ (-a)) . S (-1) . (* x)
 >   fromRational x = S (fromRational x) 0
 
-Formulas for composition and inversion:
+Formulas for composition and inversion. Only series with zeroed head can be composed
+or reversed. Composition is handled according to Horner's method:
+
+\begin{eqnarray}
+  f(x) &=& \sum\limits_{i=0}^{\infty} a_i x^i =
+           a_0 + x \sum\limits_{i=0}^{\infty} a_{i+1} x^i,\\
+  g(x) &=& \sum\limits_{j=1}^{\infty} b_j x^j =
+           x \sum\limits_{j=0}^{\infty} b_{j+1} x^j, \\
+  f(g(x)) &=& a_0 + g(x) \sum\limits_{i=0}^{\infty} a_{i+1} g(x)^i = \\
+          &=& a_0 + x \sum\limits_{j=0}^{\infty} b_{j+1} x^j
+              \sum\limits_{i=0}^{\infty} a_{i+1} g(x)^i.
+\end{eqnarray}
+
+The product of two series can be treated recursively, so:
 
 > compose :: (Num a, Eq a) => S a -> S a -> S a
 > compose (S a x) (S 0 y) = S a (y * compose x (S 0 y))
 > compose _ _ = error "compose: Non-zero head"
 
+Inversion can be done by the following formula:
+
+\begin{eqnarray}
+  f(g(x)) = x, \\
+  a_1 g(x) + a_2 g^2(x) + \ldots = x, \\
+  g(x) (a_1 + a_2 g(x) + \ldots) = x, \\
+  b_1 x + b_2 x^2 + \ldots = \cfrac{x}{a_1 + a_2 g(x) + \ldots}, \\
+  b_1 + b_2 x + \ldots = \cfrac{1}{a_1 + a_2 g(x) + \ldots}.
+\end{eqnarray}
+
+The last equality gives the recursive rule:
+
 > inverse :: (Fractional a, Eq a) => S a -> S a
 > inverse (S 0 x) = let y = S 0 (recip $ compose x y) in y
 > inverse _ = error "inverse: Non-zero head"
 
-Floating instance:
+Floating instance. According to general theory elementary special functions cannot
+be evaluated on the non-zero headed series. We try to handle this situaton by
+breaking the series into two parts: the head and the zero-headed tail.
+
+The head is treated by classic functions, the tail is treated by composing argument
+series with classical series of elementary functions, and the combination is done by
+ad-hoc formulas. The first example of the ad-hoc formula:
+
+\begin{eqnarray}
+  \sin \sum\limits_{i = 0}^{\infty} a_i x^i =
+       \sin (a_0 + \sum\limits_{i = 1}^{\infty} a_i x^i) =
+  \sin a_0 \cdot \cos \sum\limits_{i = 1}^{\infty} a_i x^i +
+       \cos a_0 \cdot \sin \sum\limits_{i = 1}^{\infty} a_i x^i.
+\end{eqnarray}
+
+Here $\cos a_0$ and $\sin a_0$ are sine and cosine of scalar. And the sine/cosine
+of zero-headed series can be calculated by composition of the argument with well-known
+series of sine/cosine.
+
+The second example. Let's look at the $\arcsin$, defenitions:
+
+\begin{eqnarray}
+  \sum\limits_{i = 0}^{\infty} b_i x^i = \arcsin \sum\limits_{i = 0}^{\infty} a_i x^i,\\
+  \sin\sum\limits_{i = 0}^{\infty} b_i x^i = \sum\limits_{i = 0}^{\infty} a_i x^i.
+\end{eqnarray}
+
+And solution for an ad-hoc formula is obtained as follows (using the fact $b_0 = \arcsin a_0$):
+
+\begin{eqnarray}
+  \sin\sum\limits_{i = 1}^{\infty} b_i x^i =
+    \sin\left(\sum\limits_{i = 0}^{\infty} b_i x^i - b_0 \right) = \\
+  = \cos b_0 \cdot \sin\sum\limits_{i = 0}^{\infty} b_i x^i -
+    \sin b_0 \cdot \cos\sum\limits_{i = 0}^{\infty} b_i x^i = \\
+  = \sqrt{1 - a_0^2} \cdot \sum\limits_{i = 0}^{\infty} a_i x^i -
+    a_0 \cdot \sqrt{1 - \left(\sum\limits_{i = 0}^{\infty} a_i x^i\right)^2}.
+\end{eqnarray}
+
+The full formula is done by adding $b_0$:
+
+\begin{equation}
+  \sum\limits_{i = 0}^{\infty} b_i x^i =
+    \arcsin a_0 + \arcsin
+       \left[
+       \sqrt{1 - a_0^2} \cdot
+       \sum\limits_{i = 0}^{\infty} a_i x^i -
+       a_0 \cdot \sqrt{1 - \left(\sum\limits_{i = 0}^{\infty} a_i x^i\right)^2}
+       \right].
+\end{equation}
 
 > instance (Floating a, Eq a) => Floating (S a) where
 >   pi = S pi 0
