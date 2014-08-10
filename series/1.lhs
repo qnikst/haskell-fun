@@ -227,7 +227,7 @@ The full formula is done by adding $b_0$:
 >   sqrt (S 0 (S 0 x)) = S 0 (sqrt x)
 >   sqrt (S 0 _) = let sq = S (0 / 0) sq in S 0 sq
 >   sqrt (S a x) = let sqa = sqrt a
->                      sqx = (x - S 0 (sqx * sqx)) /^ (2 * a)
+>                      sqx = (x - S 0 (sqx * sqx)) /^ (2 * sqrt a)
 >                  in S sqa sqx
 >   asin (S 0 x) = tasin `compose` S 0 x
 >   asin (S a x) = let S _ y = sqrt (1 - a * a) ^* (S a x) -
