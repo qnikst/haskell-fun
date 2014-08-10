@@ -322,7 +322,7 @@ This is an actual building of the Taylor serie:
 >   | otherwise = s
 
 > eps :: (Ord a, Num a) => a -> S a -> a
-> eps e s = snd . shead . sdropWhile (\(x,y) -> abs (x - y) < e)
+> eps e s = snd . shead . sdropWhile (\(x,y) -> abs (x - y) >= e)
 >         $ szipWith (,) s (stail s)
 
 > texp :: Fractional a => S a
