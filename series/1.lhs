@@ -66,6 +66,9 @@ A product of scalar and series:
 > (*^) :: Num a => S a -> a -> S a
 > (*^) = flip (^*)
 
+> (/^) :: Fractional a => S a -> a -> S a
+> (/^) s a = fmap (/ a) s
+
 And pointwise product for future:
 
 > (^*^) :: Num a => S a -> S a -> S a
@@ -214,34 +217,34 @@ The full formula is done by adding $b_0$:
 > instance (Floating a, Eq a) => Floating (S a) where
 >   pi = S pi 0
 >   exp (S 0 x) = texp `compose` S 0 x
->   exp (S a x) = fmap (* exp a) (exp $ S 0 x)
+>   exp (S a x) = exp a ^* exp (S 0 x)
 >   log (S 0 x) = tlog `compose` S 0 x
 >   log (S a x) = S (log a) 0 + log (S 0 $ fmap (/ a) x)
 >   sin (S 0 x) = tsin `compose` S 0 x
->   sin (S a x) = fmap (* sin a) (cos (S 0 x)) + fmap (* cos a) (sin (S 0 x))
+>   sin (S a x) = sin a ^* cos (S 0 x) + cos a ^* sin (S 0 x)
 >   cos (S 0 x) = tcos `compose` S 0 x
->   cos (S a x) = fmap (* cos a) (cos (S 0 x)) - fmap (* sin a) (sin (S 0 x))
+>   cos (S a x) = cos a ^* cos (S 0 x) - sin a ^* sin (S 0 x)
 >   sqrt (S 0 (S 0 x)) = S 0 (sqrt x)
 >   sqrt (S 0 _) = let sq = S (0 / 0) sq in S 0 sq
 >   sqrt (S a x) = let sqa = sqrt a
->                      sqx = fmap (/ (2 * a)) (x - S 0 (sqx * sqx))
+>                      sqx = (x - S 0 (sqx * sqx)) /^ (2 * a)
 >                  in S sqa sqx
 >   asin (S 0 x) = tasin `compose` S 0 x
->   asin (S a x) = let S _ y = fmap (* sqrt (1 - a * a)) (S a x) -
->                              fmap (* a) (sqrt (1 - (S a x) * (S a x)))
+>   asin (S a x) = let S _ y = sqrt (1 - a * a) ^* (S a x) -
+>                              a ^* sqrt (1 - (S a x) * (S a x))
 >                  in S (asin a) 0 + asin (S 0 y)
 >   acos (S 0 x) = tacos `compose` S 0 x
->   acos (S a x) = let S _ y = fmap (* a) (S a x) -
->                              fmap (* sqrt (1 - a * a)) (sqrt (1 - (S a x) * (S a x)))
+>   acos (S a x) = let S _ y = a ^* (S a x) -
+>                              sqrt (1 - a * a) ^* sqrt (1 - (S a x) * (S a x))
 >                  in S (acos a) 0 + acos (S 0 y)
 >   atan (S 0 x) = tatan `compose` S 0 x
->   atan (S a x) = let S _ y = S 0 x / (1 + fmap (* a) (S a x))
+>   atan (S a x) = let S _ y = S 0 x / (1 + a ^* (S a x))
 >                  in S (atan a) 0 + atan (S 0 y)
->   sinh x = fmap (/ 2) (exp x - exp (-x))
->   cosh x = fmap (/ 2) (exp x + exp (-x))
+>   sinh x = (exp x - exp (-x)) /^ 2
+>   cosh x = (exp x + exp (-x)) /^ 2
 >   asinh x = log (x + sqrt (x * x + 1))
 >   acosh x = undefined -- log (x + sqrt (x * x - 1))
->   atanh x = fmap (/ 2) . log $ (1 + x) / (1 - x)
+>   atanh x = log ((1 + x) / (1 - x)) /^ 2
 
 In order to inspect a stream we can introduce a helper function:
 
