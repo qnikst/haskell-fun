@@ -214,6 +214,7 @@ The full formula is done by adding $b_0$:
        \right].
 \end{equation}
 
+
 > instance (Floating a, Eq a) => Floating (S a) where
 >   pi = S pi 0
 >   exp (S 0 x) = texp `compose` S 0 x
@@ -224,6 +225,29 @@ The full formula is done by adding $b_0$:
 >   sin (S a x) = sin a ^* cos (S 0 x) + cos a ^* sin (S 0 x)
 >   cos (S 0 x) = tcos `compose` S 0 x
 >   cos (S a x) = cos a ^* cos (S 0 x) - sin a ^* sin (S 0 x)
+
+An interesting example is sqrt, as usual we want to find $b_n$ such that:
+
+$$ \sum\limits_{n=0}^\infty b_nx^n \cdot \sum\limits_{n=0}^\infty b_nx^n = \sum\limits_{n=0}^n a_i x^n $$
+
+Rewrite the formula in a head-tail form, where $y$ -- is a tail of b,
+and $p$ -- is a tail of incomming serie:
+
+$$ (b_0 + x * y) (b_ 0 + x * y) = a0 + x p$$
+
+$$ b_0^2 + 2 x y + x^2 y = a0 + x p$$
+
+by grouping elements with 0 and 1 power of $x$, find:
+
+\begin{equation}
+  \left\lbrace
+  \begin{matrix}
+     b_0 & = \sqrt{a_0} \\
+     y & = \frac{p-y^2}{2 \sqrt{a_0}}
+  \end{matrix}
+  \right.
+\end{equation}
+
 >   sqrt (S 0 (S 0 x)) = S 0 (sqrt x)
 >   sqrt (S 0 _) = let sq = S (0 / 0) sq in S 0 sq
 >   sqrt (S a x) = let sqa = sqrt a
