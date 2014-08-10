@@ -1,47 +1,85 @@
 > {-# LANGUAGE BangPatterns #-}
 > import Control.Monad.Fix
 
-I want to play a bit with series expansion, for an example I'll
-take a Taylor series.
+I want to play a bit with formal series expansion. Formal series
+can be expressed as:
 
-For a function we can write a Taylor series expansion:
+\begin{equation}
+  f(x) = \sum\limits_{i=0}^\infty a_ix^i
+\end{equation}
 
-$$ f(x) = f(x_0) + \sum_{k=1}\frac{f^(k)}{k!}(x-x_0)^k $$
+And address a Taylor series as an example. For a function $f$ we
+can expand it an any given point $x_0$, then:
+
+\begin{equation}
+ f(x) = f(x_0) + \sum_{k=1}\frac{f^(k)}{k!}(x-x_0)^k
+\end{equation}
 
 And I want to implement a small amount of code that can work
 with such representations.
 
-As a basic structure I'm going to use a stream of values `a`:
+At first we need to choose a data structure to hold a values,
+here we have 2 candidates:
+
+  1. List - a datastructure with two constructors that represent
+       a possibly infinite single-linked list.
+
+  2. Stream - a datastructure with one constructor that represent
+       an infinite stream of values.
+
+We may want to select a list because this way we may represent
+a finite series (as some functions have all coefficients equal to
+$0$ starting at some point, or if function diverge than all element
+will be represented as machine zero starting at some point).
+But we decide to use 'Stream' data type in order to not have
+a branching in functions.
+
+It's possible to use an existing library for `Stream` -- 
+[Stream package](https://hackage.haskell.org/package/Stream).
+However here we decide to implement our own approach as is relatively
+the same. However if this module will grow to a real library
+the implementation likely will be changed to the one from the
+common package.
 
 > data S a = S !a (S a)
 
-Here we had a choice as both `List` and `Stream` can work for us.
-More over `List` is more expressive as it's possible to write a
-finite serie using `List`
-
-If you'll use a streams for you then you can take a them from
-[Stream](https://hackage.haskell.org/package/Stream) package.
-The implemetation is more or less the same as here.
+Having a data structure we may define a set of instances.
 
 Series is a Functor:
 
 > instance Functor S where
 >    fmap f (S a x) = S (f a) (fmap f x)
 
-Also we may give a 'Num' instance for simplicity:
+An interesting note that $fmap ~ (f :: a \to b)$ moves
+a function that is represented by a serie from $a \to a$
+to $b \to b$ that may not be a desired behaviour when
+$a \neq b$.
+
+In order to use series in calculations we need to define a `Num`
+instance. But befor we will introduce few helpers:
+
+A product of scalar and series:
+
+> (^*) :: Num a => a -> S a -> S a
+> (^*) a = fmap (*a)
+
+> (*^) :: Num a => S a -> a -> S a
+> (*^) = flip (^*)
+
+And pointwise product for future:
+
+> (^*^) :: Num a => S a -> S a -> S a
+> (^*^) = szipWith (*)
+
+Now we may give a 'Num' instance:
 
 > instance Num a => Num (S a) where
 >   (S a x) + (S b y) = S (a + b) (x + y)
 >   abs s = fmap abs s
 >   negate s = fmap negate s
 >   signum s = fmap signum s
->   (S a x) * (S b y) = S (a * b) (fmap (* a) y + fmap (*b) x + S 0 (x * y))
+>   (S a x) * (S b y) = S (a * b) (a ^* y +  b ^* x + S 0 (x * y))
 >   fromInteger x = S (fromInteger x) 0
-
-And pointwise product for future:
-
-> (^*) :: Num a => S a -> S a -> S a
-> (^*) = szipWith (*)
 
 Here are 2 tricky parts, first one is implementation of `*` second one
 is implementation of `fromInteger`. For `*` we need to think of an expansion
@@ -86,7 +124,6 @@ of series $b$. That fact may be used for compact of definition of recursive equa
 \end{eqnarray}
 
 > instance Fractional a => Fractional (S a) where
->   -- recip (S a x) = let y = fmap (/ (-a)) (S (-1) (x * y)) in y
 >   recip (S a x) = fix $ fmap (/ (-a)) . S (-1) . (* x)
 >   fromRational x = S (fromRational x) 0
 
@@ -270,7 +307,7 @@ And now 1/factorials
 This is an actual building of the Taylor serie:
 
 > build :: Fractional a => a -> S a -> S a
-> build t s = ssum $ spower t ^* s
+> build t s = ssum $ spower t ^*^ s
 
 
 > shead :: S a -> a
@@ -297,11 +334,11 @@ This is an actual building of the Taylor serie:
 
 > tsin :: Fractional a => S a
 > tsin = let s = S 0 . S 1 . S 0 . S (-1) $ s
->        in s ^* texp
+>        in s ^*^ texp
 
 > tcos :: Fractional a => S a
 > tcos = let s = S 1 . S 0 . S (-1) . S 0 $ s
->        in s ^* texp
+>        in s ^*^ texp
 
 > tasin :: Fractional a => S a
 > tasin = let go n = S (1 / n) (fmap (* (n / (n + 1))) . S 0 $ go (n + 2))
@@ -316,11 +353,11 @@ This is an actual building of the Taylor serie:
 
 > tsinh :: Fractional a => S a
 > tsinh = let s = S 0 . S 1 . S 0 . S 1 $ s
->         in s ^* texp
+>         in s ^*^ texp
 
 > tcosh :: Fractional a => S a
 > tcosh = let s = S 1 . S 0 . S 1 . S 0 $ s
->         in s ^* texp
+>         in s ^*^ texp
 
 > tasinh :: Fractional a => S a
 > tasinh = let go s n = S (s / n) (fmap (* (n / (n + 1))) . S 0 $ go (-s) (n + 2))
