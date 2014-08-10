@@ -12,7 +12,7 @@ And address a Taylor series as an example. For a function $f$ we
 can expand it an any given point $x_0$, then:
 
 \begin{equation}
- f(x) = f(x_0) + \sum_{k=1}\frac{f^(k)}{k!}(x-x_0)^k
+ f(x) = f(x_0) + \sum_{k=1}\frac{f^{(k)}}{k!}(x-x_0)^k
 \end{equation}
 
 And I want to implement a small amount of code that can work
