@@ -284,7 +284,7 @@ Build a stream by iterating a function
 
 Build a serie of powers: $<x,x^2,x^3,...>$
 
-> spower x = siterate (*x) x
+> spower x = S 1 (siterate (*x) x)
 
 Unfold
 
