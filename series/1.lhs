@@ -270,6 +270,17 @@ by grouping elements with 0 and 1 power of $x$, find:
 >   acosh x = undefined -- log (x + sqrt (x * x - 1))
 >   atanh x = log ((1 + x) / (1 - x)) /^ 2
 
+
+Now we can take a derivative of the series:
+
+> diff :: Num a => S a -> S a
+> diff s = fmap fromInteger (fromList [1..]) ^*^ stail s
+
+And integral:
+
+> integral :: Fractional a => a -> S a -> S a
+> integral c  s = S c (s ^*^ fmap (recip.fromInteger) (fromList [1..]) )
+
 In order to inspect a stream we can introduce a helper function:
 
 > stake :: Int -> S a -> [a]
@@ -402,3 +413,5 @@ This is an actual building of the Taylor serie:
 > test2 = eps 0.05 $ build 1 $ texp + texp
 
 > test3 = eps 0.05 $ build 1 $ texp * (S 2 (S 2 0))
+
+
