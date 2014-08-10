@@ -45,6 +45,9 @@ common package.
 
 Having a data structure we may define a set of instances.
 
+\section{Instances}
+\subsection{Functor}
+
 Series is a Functor:
 
 > instance Functor S where
@@ -54,6 +57,8 @@ An interesting note that $fmap ~ (f :: a \to b)$ moves
 a function that is represented by a serie from $a \to a$
 to $b \to b$ that may not be a desired behaviour when
 $a \neq b$.
+
+\subsection{Num}
 
 In order to use series in calculations we need to define a `Num`
 instance. But befor we will introduce few helpers:
@@ -89,7 +94,7 @@ is implementation of `fromInteger`. For `*` we need to think of an expansion
 like of polymonial, i.e. `S a b = a + b \cdot p`. Then we can write the following:
 
 \begin{eqnarray}
- (S~a~x) * (S~b~y) &=& (a + x p) * (b + y p) = \\
+ (S~a~x) \cdot (S~b~y) &=& (a + x p) * (b + y p) = \\
   &=& (a b + a y p + b x p + x y p^2) = \\
   &=& S~(a b)~(a y + b x + x y p)     = \\
   &=& S~(a b)~(fmap~(*a)~y + fmap~(*b)~x + S~0~(x * y))
@@ -105,10 +110,12 @@ For `fromInteger` we need to select an implemnation such that `fromInteger 1 * a
 `fromInteger 0 + a = a` `fromInteger 0 * a == 0` for any `a`. So then we see that we
 can select only second one, otherwise properties for `1` will not hold.
 
+\subsection{Fractional}
+
 Now we can add a simple Fractional instance.
 
-We say that $(S~b~y) = \cfrac{1}{(S~a~x)}$ iff $(S~b~y)$ is the solution of
-equation $(S~b~y) * (S~a~x) = 1$. So the following intance is the result of
+We say that $(S\,b\,y) = \cfrac{1}{(S\, a\, x)}$ iff $(S\, b\, y)$ is the solution of
+equation $(S\,b\,y)\,\cdot\,(S\,a\,x) = 1$. So the following intance is the result of
 this system of equations:
 \begin{eqnarray}
   b_0 a_0 = 1,\\
