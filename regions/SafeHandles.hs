@@ -1,4 +1,4 @@
--- by Oleg  Kiselyv
+-- by Oleg  Kiselyov
 -- URL: http://okmij.org/ftp/Computation/resource-aware-prog/SafeHandles.hs
 {-# LANGUAGE Rank2Types, GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, FlexibleContexts #-}
@@ -412,8 +412,7 @@ instance RMonadIO n => Duplicate (IORT s n) (IORT s n) where
      return x)
 instance RMonadIO n => Duplicate (IORT s n) (IORT s (IORT s n)) where dups = shDup
 instance (RMonadIO m, RMonadIO n, Duplicate n (IORT s m)) => Duplicate n (IORT s (IORT s m)) where
-  dups r = do x <- shDup r
-              liftSIO $ dups x
+  dups (SHandle r)  = liftSIO $ dups (SHandle r)
 
 data RegionVar s = RV (MVar (SHandle s))
 

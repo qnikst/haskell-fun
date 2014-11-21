@@ -336,7 +336,7 @@ test7f = runSIO (do
 test8f = runSIO (do
    h1 <- newSHandle "/etc/issue" ReadMode
    newRgn $ do
-      h2 <- newSHandle "/etc/issue/" ReadMode
+      h2 <- newSHandle "/etc/issue" ReadMode
       t <- regionForkIO $ do
         l2 <- shGetLine h1
         l3 <- shGetLine h2
