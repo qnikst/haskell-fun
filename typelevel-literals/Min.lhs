@@ -18,6 +18,10 @@
 > data Proof2D :: (Nat -> *) -> * where
 >   Proof2D :: Dict (KnownNat n) -> c n -> Proxy n -> Proof2D c
 
+
+> instance Show (Proof2D c) where
+>   show (Proof2D _ _ k) = show k
+
 > data LessThen255D (n::Nat) where LessThen255D :: (n <= 255) => LessThen255D n
 
 > oned :: Dict (KnownNat n) -> LessThen255D n -> Proxy n -> Proof2D LessThen255D
@@ -52,9 +56,17 @@
 > instance GuessProof '[] where
 >   proof _ _ = Nothing
 
-> instance (KnownNat n, n <= 255) => GuessProof (n ': ns) where
->   proof s p = guessProof s (inner p)
+> instance (KnownNat n, n <= 255, GuessProof ns) => GuessProof (n ': ns) where
+>   proof s p = case guessProof s (inner p) of
+>                 Nothing -> proof s (next p)
+>                 x -> x
 >    where inner :: Proxy (n ': ns) -> Proxy (n::Nat)
 >          inner _ = Proxy
+>          next :: Proxy (n ': ns) -> Proxy (ns::[Nat])
+>          next _ = Proxy
 
 > main = return ()
+
+> type family C2N (n::N) :: Nat where
+>   C2N Z = 0
+>   C2N (S x) = 1 + C2N x
