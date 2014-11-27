@@ -1,10 +1,12 @@
 > {-# LANGUAGE DataKinds, TypeOperators, KindSignatures, GADTs, ConstraintKinds, TypeFamilies, UndecidableInstances #-}
 > {-# LANGUAGE FlexibleInstances, ViewPatterns #-}
+> {-# LANGUAGE ScopedTypeVariables #-}
 
 > import GHC.TypeLits
 > import Data.Constraint
 > import Data.Proxy
 > import Unsafe.Coerce
+> import Data.Reflection
 
 > data Proof2 :: (Nat -> Constraint) -> * where
 >   Proof2 :: c n => Proxy n -> Proof2 c 
@@ -16,22 +18,22 @@
 > one = Proof2
 
 > data Proof2D :: (Nat -> *) -> * where
->   Proof2D :: Dict (KnownNat n) -> c n -> Proxy n -> Proof2D c
+>   Proof2D :: (Proxy n -> Integer) -> c n -> Proxy n -> Proof2D c
 
 
 > instance Show (Proof2D c) where
->   show (Proof2D _ _ k) = show k
+>   show (Proof2D n _ k) = show $ n k
 
 > data LessThen255D (n::Nat) where LessThen255D :: (n <= 255) => LessThen255D n
 
-> oned :: Dict (KnownNat n) -> LessThen255D n -> Proxy n -> Proof2D LessThen255D
+> oned :: (Proxy n -> Integer) -> LessThen255D n -> Proxy n -> Proof2D LessThen255D
 > oned = Proof2D
 
 > c2d :: LessThen255 n => Proxy n -> LessThen255D n
 > c2d _ = LessThen255D
 
-> c2dk :: KnownNat n => Proxy n -> Dict (KnownNat n)
-> c2dk _ = Dict
+> c2dk :: KnownNat n => Proxy n -> (Proxy n -> Integer) -- Dict (KnownNat n)
+> c2dk _ = natVal 
 
 
 > guessProof :: (KnownNat n, n <= 255) => SomeNat -> Proxy n -> Maybe (Proof2D LessThen255D)
@@ -68,5 +70,5 @@
 > main = return ()
 
 > type family C2N (n::N) :: Nat where
->   C2N Z = 0
->   C2N (S x) = 1 + C2N x
+>   C2N 'Z = 0
+>   C2N ('S x) = 1 + C2N x
