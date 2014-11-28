@@ -7,6 +7,7 @@
 > import Data.Proxy
 > import Unsafe.Coerce
 > import Data.Reflection
+> import Control.Monad
 
 > data Proof2 :: (Nat -> Constraint) -> * where
 >   Proof2 :: c n => Proxy n -> Proof2 c 
@@ -18,15 +19,14 @@
 > one = Proof2
 
 > data Proof2D :: (Nat -> *) -> * where
->   Proof2D :: (Proxy n -> Integer) -> c n -> Proxy n -> Proof2D c
-
+>   Proof2D :: KnownNat n => c n -> Proxy n -> Proof2D c
 
 > instance Show (Proof2D c) where
->   show (Proof2D n _ k) = show $ n k
+>   show (Proof2D _ k) = show $ natVal k
 
 > data LessThen255D (n::Nat) where LessThen255D :: (n <= 255) => LessThen255D n
 
-> oned :: (Proxy n -> Integer) -> LessThen255D n -> Proxy n -> Proof2D LessThen255D
+> oned :: KnownNat n => LessThen255D n -> Proxy n -> Proof2D LessThen255D
 > oned = Proof2D
 
 > c2d :: LessThen255 n => Proxy n -> LessThen255D n
@@ -38,7 +38,7 @@
 
 > guessProof :: (KnownNat n, n <= 255) => SomeNat -> Proxy n -> Maybe (Proof2D LessThen255D)
 > guessProof (SomeNat p) n = case sameNat p n of
->     Just _  -> Just $ Proof2D (c2dk n) LessThen255D n
+>     Just _  -> Just $ Proof2D {-(c2dk n)-} LessThen255D n
 >     Nothing -> Nothing
 
 > data N = Z | S N
@@ -59,9 +59,7 @@
 >   proof _ _ = Nothing
 
 > instance (KnownNat n, n <= 255, GuessProof ns) => GuessProof (n ': ns) where
->   proof s p = case guessProof s (inner p) of
->                 Nothing -> proof s (next p)
->                 x -> x
+>   proof s p = guessProof s (inner p) `mplus` proof s (next p)
 >    where inner :: Proxy (n ': ns) -> Proxy (n::Nat)
 >          inner _ = Proxy
 >          next :: Proxy (n ': ns) -> Proxy (ns::[Nat])
