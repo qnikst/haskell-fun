@@ -110,6 +110,14 @@ know if it's related to non-injectivity or a bug.. I can report it :)
 
 When I realized this problem, I have stopped.
 
+Update. As Richard Eisenberg says
+
+    By the way, the bug in the Proof2 version is a bug in GHC 7.8.3
+    (only in .3 -- not in .2 or in the soon-to-be .4) that allows you
+    to write unsaturated type families that don't work.
+    Saying `LessThan255` without a parameter should be a syntax error,
+    but that check was accidentally turned off for 7.8.3, leading to a bogus type error.
+
 Attept-3: carry a contraint in a datatype
 ----------------------------------------------------------------------
 
