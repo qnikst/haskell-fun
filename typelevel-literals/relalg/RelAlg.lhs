@@ -31,6 +31,7 @@
 > import           Data.Set (Set)
 > import qualified Data.Set as Set
 > import           Data.Monoid
+> import           Unsafe.Coerce
 
 Для дальшейней работы нам потребуется два типа, тут можно обойтись и одним, но
 так проще. Для начала введем синоним типа обозначающий, что поле "вида" @а@, имеет
@@ -47,7 +48,7 @@
 
 > data HRec :: [*] -> * where
 >   HNil  :: HRec '[]
->   HCons :: KnownSymbol b => a -> HRec xs -> HRec ((b :-> a) ': xs)
+>   HCons :: a -> HRec xs -> HRec ((b :-> a) ': xs)
 
 Давайте рассмотрим эту запись, перед нами предстало обобщенный алгебраический тип
 параметризованный списком на уровне типов, этот список показывает какие связки
@@ -75,6 +76,118 @@ t :: HRec '["Name" :-> String, "Age" :-> Int]
 
 > instance (Ord b, Ord (HRec xs)) => Ord (HRec ((a :-> b) ': xs)) where
 >    (HCons a as) `compare` (HCons b bs) = a `compare` b <> as `compare` bs
+
+
+Для множеств используем обертку типа:
+
+> newtype RelSet xs = RS { unRS :: Set (HRec xs) }
+
+Тут вполне можно использовать и синоним типа, но это будет хуже, т.к. newtype является
+ещё и прокси и может служить для передачи информации о типе.
+
+
+Начнем с простых операций над множествами:
+
+\### Объедиение
+
+> union :: Ord (HRec xs) => RelSet xs -> RelSet xs -> RelSet xs
+> union (RS sx) (RS sy) = RS $ sx `Set.union` sy
+
+\### Пересечение
+
+> intersection :: Ord (HRec xs) => RelSet xs -> RelSet xs -> RelSet xs
+> intersection (RS sx) (RS sy) = RS $ sx `Set.intersection` sy
+
+\### Вычитание
+
+> subtraction :: Ord (HRec xs) => RelSet xs -> RelSet xs -> RelSet xs
+> subtraction (RS sx) (RS sy) = RS $ sx Set.\\ sy
+
+
+Данные операции пишутся банально и не интересны для нас. Так что можно переходить
+к более сложным.
+
+\### Переименование
+
+Переименованием называется унарная операция $\rho_{a / b}(R)$ результатом которой является
+множество равное $R$, за исключением того, что все аттрибуты @a@ в кортежах переименованы в @b@. 
+
+Рассмотрим сначала переименование на типах, т.е. если у нас есть список [s -> a], то мы хотим
+переименовать часть s в g. Это можно сделать рекурсивно, для каждого из элементов списка G, мы
+проходим по всем элементам списка a, переименовывая если имена совпадают. Плюс используем тот
+факт, что данные не повторяются.
+
+> type family Rename (a :: [*]) (b :: [*]) :: [*] where
+>        Rename '[]       bs = '[]
+>        Rename (a ': as) bs = RenameInner a bs ': Rename as bs
+
+> type family RenameInner (a :: *) (b :: [*]) :: * where
+>        RenameInner     a         '[]          = a
+>        RenameInner (s :-> a) (s :--> g ': bs) = g :-> a
+>        RenameInner     a     (    g    ': bs) = RenameInner a bs
+
+
+Примеры использования:
+
+*Main> :kind! Rename ["Foo" :-> Int,"Bar" :-> ()] ["Foo" :--> "Bar", "Bar" :--> "Foo"]
+Rename ["Foo" :-> Int,"Bar" :-> ()] ["Foo" :--> "Bar", "Bar" :--> "Foo"] :: [*]
+= '["Bar" :-> Int, "Foo" :-> ()]
+
+Так же мы можем использовать это при определении записей:
+
+*Main> show (HCons 5 (HCons () HNil) :: HRec (Rename ["Foo" :-> Int,"Bar" :-> ()] ["Foo" :--> "Bar", "Bar" :--> "Foo"]))
+"HCons (Bar :-> 5) (HCons (Foo :-> ()) (HNil))"
+
+*Main> let t = HCons 5 (HCons () HNil) :: HRec ["Foo" :-> Int,"Bar" :-> ()]
+*Main> it
+t :: HRec '["Foo" :-> Int, "Bar" :-> ()]
+*Main> t :: HRec ["Bar" :-> Int, "Foo" :-> ()]
+<interactive>:35:1:
+    Couldn't match type ‘"Foo"’ with ‘"Bar"’
+    Expected type: HRec '["Bar" :-> Int, "Foo" :-> ()]
+      Actual type: HRec '["Foo" :-> Int, "Bar" :-> ()]
+    In the expression: t :: HRec '["Bar" :-> Int, "Foo" :-> ()]
+    In an equation for ‘it’:
+        it = t :: HRec '["Bar" :-> Int, "Foo" :-> ()]
+
+> rrename :: Rename' HRec a (Rename a b) => HRec a -> proxy b -> HRec (Rename a b)
+> rrename h r = rrename' h (pp h r)
+>  where pp :: proxy1 a -> proxy2 b -> Proxy (Rename a b)
+>        pp _ _ = Proxy
+   
+> class Rename' s a b where
+>   rrename' :: s a -> proxy b -> s b
+
+> instance Rename' HRec '[] '[] where
+>   rrename' HNil _ = HNil
+
+> instance Rename' HRec as bs => Rename' HRec (x :-> a ': as) (y :-> a ': bs) where
+>   rrename' (HCons a as) p = HCons a (rrename' as (pp p))
+>      where pp :: proxy (a ': as) -> Proxy as
+>            pp _ = Proxy
+
+Пример:
+
+*Main> rrename t (Proxy :: Proxy '["Foo" :--> "Zoo"])
+HCons (Zoo :-> 5) (HCons (Bar :-> ()) (HNil))
+
+
+Но как внимательный читатель уже заметил преставление соверешенно не изменяется,
+поэтому справедливо будет следующая реализация:
+
+> rrename'' :: HRec a -> proxy b -> HRec (Rename a b)
+> rrename'' h _ = unsafeCoerce h
+
+*Main> rrename'' t (Proxy :: Proxy '["Foo" :--> "Zoo"])
+HCons (Zoo :-> 5) (HCons (Bar :-> ()) (HNil))
+
+Задание, проверим, что будет если мы попробуем переименовать несуществующее поле
+
+*Main> :kind! Rename ["Foo" :-> Int,"Bar" :-> ()] ["Foo" :--> "E", "Zoo" :--> "Foo"]
+Rename ["Foo" :-> Int,"Bar" :-> ()] ["Foo" :--> "E", "Zoo" :--> "Foo"] :: [*]
+= '["E" :-> Int, "Bar" :-> ()]
+
+Как изменить код таким образом, чтобы такое переименование было запрещено (не выводилось)
 
 -------------------------------------
 -- Reading
@@ -177,25 +290,7 @@ t :: HRec '["Name" :-> String, "Age" :-> Int]
 
 ------------------------------------------------------------------------------------------
 
-> newtype RelSet xs = RS { unRS :: Set (HRec xs) }
-
 Relational algebra
-
-1. Переименование
-2. Объедиение
-
-> union :: Ord (HRec xs) => RelSet xs -> RelSet xs -> RelSet xs
-> union (RS sx) (RS sy) = RS $ sx `Set.union` sy
-
-3. Пересечение
-
-> intersection :: Ord (HRec xs) => RelSet xs -> RelSet xs -> RelSet xs
-> intersection (RS sx) (RS sy) = RS $ sx `Set.intersection` sy
-
-4. Вычитание
-
-> subtraction :: Ord (HRec xs) => RelSet xs -> RelSet xs -> RelSet xs
-> subtraction (RS sx) (RS sy) = RS $ sx Set.\\ sy
 
 5. Multiplication
 
@@ -227,6 +322,4 @@ Relational algebra
 8. Деление
 
 > division :: (Eq (RelSet ys), Ord (HRec ys), Project HRec xs ys ys, RPredicate HRec xs (EqPred (Minus xs ys)), EqPredicate HRec (Minus xs ys) (EqPred (Minus xs ys)), Ord (HRec (Minus xs ys)), Project HRec xs (Minus xs ys) (Minus xs ys)) => RelSet xs -> RelSet ys -> RelSet (Minus xs ys)
-> division rx ry = RS $ Set.fromList [ s | (s,v) <- ps1 Proxy rx, v == ry]
->   where ps1 :: (Ord (HRec ys), Ord (HRec (Minus xs ys)), Project HRec xs (Minus xs ys) (Minus xs ys), RPredicate HRec xs (EqPred (Minus xs ys)), Project HRec xs ys ys, EqPredicate HRec (Minus xs ys) (EqPred (Minus xs ys))) => proxy ys -> RelSet xs -> [(HRec (Minus xs ys), RelSet ys)]
->         ps1 _ rx = [ (x, projection (selection rx (eqPredicate x))) | x <- Set.toList (unRS $ projection rx)]
+> division rx ry = RS $ Set.fromList [ s | (s,v) <- [ (x, projection (selection rx (eqPredicate x))) | x <- Set.toList (unRS $ projection rx)], v == ry]
