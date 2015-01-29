@@ -175,8 +175,8 @@ HCons (Zoo :-> 5) (HCons (Bar :-> ()) (HNil))
 Но как внимательный читатель уже заметил преставление соверешенно не изменяется,
 поэтому справедливо будет следующая реализация:
 
-> rrename'' :: HRec a -> proxy b -> HRec (Rename a b)
-> rrename'' h _ = unsafeCoerce h
+> rename'' :: HRec a -> proxy b -> HRec (Rename a b)
+> rename''  h _ = unsafeCoerce h
 
 *Main> rrename'' t (Proxy :: Proxy '["Foo" :--> "Zoo"])
 HCons (Zoo :-> 5) (HCons (Bar :-> ()) (HNil))
@@ -189,57 +189,34 @@ Rename ["Foo" :-> Int,"Bar" :-> ()] ["Foo" :--> "E", "Zoo" :--> "Foo"] :: [*]
 
 Как изменить код таким образом, чтобы такое переименование было запрещено (не выводилось)
 
--------------------------------------
--- Reading
+> ρ :: RelSet a -> proxy b -> RelSet (Rename a b)
+> ρ  r _ = unsafeCoerce r
 
-> class Lookup s a b c | s a b -> c where
->   rlookup' :: Proxy a -> Proxy b -> s a -> c 
-> 
-> instance Lookup HRec ( (n :-> a) ': xs ) n a where
->   rlookup' _ _ (HCons a _) = a
-> 
-> instance Lookup HRec xs n c => Lookup HRec ( (m :-> a) ': xs ) n c where
->   rlookup' pa pb (HCons _ xs) = rlookup' (pa' pa) pb xs
->     where
->       pa' :: Proxy (a ': xs) -> Proxy xs
->       pa' _ = Proxy
-> 
-> rlookupP :: Lookup s a b c => s a -> Proxy b -> c
-> rlookupP s b = rlookup' Proxy b s 
+\### Проекция
 
--------------------------------------
--- Concat 
+Проекцией называют
 
-> type family Append xs ys where
->   Append '[] ys = ys
->   Append (x ': xs) ys = x ': Append xs ys
+Как обычно начнем с функции работающей на уровне типов:
 
-> class Merge s a b c | s a b -> c where
->   rmerge :: s a -> s b -> s c
-> 
-> instance Merge HRec '[] b b where
->   rmerge HNil xs = xs
-> 
-> instance Merge HRec as b c => Merge HRec (a ': as) b (a ': c) where
->   rmerge (HCons x xs) s = HCons x (rmerge xs s)
+> type family Project' a b where
+>   Project' s       '[]     = '[]
+>   Project' s    (b ': bs)  = ProjectInner' s b ': Project' s bs 
+>
+> type family ProjectInner' s b where
+>   ProjectInner' (s :-> a ': as) s = s :-> a
+>   ProjectInner' (   a    ': as) s = ProjectInner' as s
+
+Пример:
+
+*Main> :kind! Project' ["Foo" :-> Int,"Bar" :-> ()] '["Foo"]
+Project' ["Foo" :-> Int,"Bar" :-> ()] '["Foo"] :: [*]
+= '["Foo" :-> Int]
 
 
-> type family Minus xs ys where
->   Minus xs '[] = xs
->   Minus xs (y ': ys) = Minus (MinusInner xs y) ys
+Попробуем теперь построить решение другим способом:
 
-> type family MinusInner xs y where
->   MinusInner (y ': xs) y = xs
->   MinusInner (x ': xs) y = x ': MinusInner xs y
-
--------------------------------------
--- Project
-
-> rcons :: KnownSymbol b => Proxy b -> a -> HRec c -> HRec ( (b :-> a) ': c)
-> rcons _ a xs = HCons a xs
-> 
 > class Project s a b c | s a b -> c where
->   rproject :: s a -> Proxy b -> s c
+>   rproject :: s a -> Proxy b -> s c 
 > 
 > instance Project HRec a '[] '[] where
 >   rproject _ _ = HNil
@@ -253,6 +230,33 @@ Rename ["Foo" :-> Int,"Bar" :-> ()] ["Foo" :--> "E", "Zoo" :--> "Foo"] :: [*]
 >           pTail :: Proxy (b ': bs) -> Proxy bs
 >           pTail _ = Proxy
 
+
+> rcons :: KnownSymbol b => Proxy b -> a -> HRec c -> HRec ( (b :-> a) ': c)
+> rcons _ a xs = HCons a xs
+
+Пример:
+
+*Main> rproject t (Proxy :: Proxy '["Bar"])
+HCons (Bar :-> ()) (HNil)
+
+
+Теперь сделаем такую же операцию для множеств, заодно убрав прокси:
+
+
+> π :: (Project HRec xs ys ys, Ord (HRec ys)) => RelSet xs -> RelSet ys
+> π rs = inner Proxy rs 
+>   where inner :: (Project HRec xs ys ys, Ord (HRec ys)) => Proxy ys -> RelSet xs -> RelSet ys
+>         inner p (RS sx) = RS $ Set.map (\x -> rproject x p) sx
+
+> projection :: (Project HRec xs ys ys, Ord (HRec ys)) => RelSet xs -> RelSet ys
+> projection = π 
+
+Пример: ????
+
+\### Выборка
+
+Для выборки придется немного пофантазировать, сперва мы введем специальный класс,
+который позволяет объединять предикаты по полям в предикат по записи
 
 > class RPredicate s a b where
 >   rpredicate :: s a -> s b -> Bool
@@ -288,11 +292,27 @@ Rename ["Foo" :-> Int,"Bar" :-> ()] ["Foo" :--> "E", "Zoo" :--> "Foo"] :: [*]
 > instance (EqPredicate HRec as bs, Eq a) => EqPredicate HRec ((n :-> a) ': as) ((n :-> (a -> Bool)) ': bs) where
 >   eqPredicate (HCons x xs) = HCons (==x) (eqPredicate xs)
 
-------------------------------------------------------------------------------------------
 
-Relational algebra
+> σ :: (RPredicate HRec xs ys) => RelSet xs -> HRec ys -> RelSet xs
+> σ (RS sx) h = RS $ Set.filter (\x -> rpredicate x h) sx
 
-5. Multiplication
+> selection :: (RPredicate HRec xs ys) => RelSet xs -> HRec ys -> RelSet xs
+> selection = σ
+
+\### Умножение
+
+> type family Append xs ys where
+>   Append '[] ys = ys
+>   Append (x ': xs) ys = x ': Append xs ys
+
+> class Merge s a b c | s a b -> c where
+>   rmerge :: s a -> s b -> s c
+> 
+> instance Merge HRec '[] b b where
+>   rmerge HNil xs = xs
+> 
+> instance Merge HRec as b c => Merge HRec (a ': as) b (a ': c) where
+>   rmerge (HCons x xs) s = HCons x (rmerge xs s)
 
 > multiplication :: (Merge HRec xs ys (Append xs ys), Ord (HRec (Append xs ys))) => RelSet xs -> RelSet ys -> RelSet (Append xs ys)
 > multiplication (RS sx) (RS sy) =
@@ -301,25 +321,32 @@ Relational algebra
 >                     , y <- Set.toList sy
 >                     ]
 
-6. Выборка
+\### Деление
 
-> σ :: (RPredicate HRec xs ys) => RelSet xs -> HRec ys -> RelSet xs
-> σ (RS sx) h = RS $ Set.filter (\x -> rpredicate x h) sx
 
-> selection :: (RPredicate HRec xs ys) => RelSet xs -> HRec ys -> RelSet xs
-> selection = σ
+> type family Minus xs ys where
+>   Minus xs '[] = xs
+>   Minus xs (y ': ys) = Minus (MinusInner xs y) ys
 
-7. Проекция
-
-> π :: (Project HRec xs ys ys, Ord (HRec ys)) => RelSet xs -> RelSet ys
-> π rs = inner Proxy rs 
->   where inner :: (Project HRec xs ys ys, Ord (HRec ys)) => Proxy ys -> RelSet xs -> RelSet ys
->         inner p (RS sx) = RS $ Set.map (\x -> rproject x p) sx
-
-> projection :: (Project HRec xs ys ys, Ord (HRec ys)) => RelSet xs -> RelSet ys
-> projection = π 
-
-8. Деление
+> type family MinusInner xs y where
+>   MinusInner (y ': xs) y = xs
+>   MinusInner (x ': xs) y = x ': MinusInner xs y
 
 > division :: (Eq (RelSet ys), Ord (HRec ys), Project HRec xs ys ys, RPredicate HRec xs (EqPred (Minus xs ys)), EqPredicate HRec (Minus xs ys) (EqPred (Minus xs ys)), Ord (HRec (Minus xs ys)), Project HRec xs (Minus xs ys) (Minus xs ys)) => RelSet xs -> RelSet ys -> RelSet (Minus xs ys)
 > division rx ry = RS $ Set.fromList [ s | (s,v) <- [ (x, projection (selection rx (eqPredicate x))) | x <- Set.toList (unRS $ projection rx)], v == ry]
+
+> class Lookup s a b c | s a b -> c where
+>   rlookup' :: Proxy a -> Proxy b -> s a -> c 
+> 
+> instance Lookup HRec ( (n :-> a) ': xs ) n a where
+>   rlookup' _ _ (HCons a _) = a
+> 
+> instance Lookup HRec xs n c => Lookup HRec ( (m :-> a) ': xs ) n c where
+>   rlookup' pa pb (HCons _ xs) = rlookup' (pa' pa) pb xs
+>     where
+>       pa' :: Proxy (a ': xs) -> Proxy xs
+>       pa' _ = Proxy
+> 
+> rlookupP :: Lookup s a b c => s a -> Proxy b -> c
+> rlookupP s b = rlookup' Proxy b s 
+
