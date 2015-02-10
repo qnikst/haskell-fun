@@ -4,6 +4,7 @@
 {-# LANGUAGE MultiParamTypeClasses, FlexibleInstances, FlexibleContexts #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ConstraintKinds #-}
 
 {-# LANGUAGE UndecidableInstances, OverlappingInstances #-}
 
@@ -185,8 +186,13 @@ instance Monad m => MonadRaise m (IORT s2 (IORT s1 m))
 instance Monad m => MonadRaise m (IORT s3 (IORT s2 (IORT s1 m)))
 -}
 
+class CanBeARegion (m :: * -> *)
+instance CanBeARegion (IORT s m)
+instance CanBeARegion IO
+instance CanBeARegion (ReaderT r m)
+
 -- RMonadIO is an internal class, a version of MonadIO
-class Monad m => RMonadIO m where
+class (CanBeARegion m, Monad m) => RMonadIO m where
     brace :: m a -> (a -> m b) -> (a -> m c) -> m c
     snag  :: Exception e => m a -> (e -> m a) -> m a
     lIO   :: IO a -> m a
@@ -231,16 +237,21 @@ instance RMonadIO m => RMonadIO (IORT s m) where
     snag m f = IORT ( unIORT m `snag` (unIORT . f) )
     lIO = IORT . lIO
 
+{-
 -- A safe version of RMonadIO, which is exported
 -- SMonadIO is useful in writing signatures
 class RMonadIO m => SMonadIO m
 instance RMonadIO m => SMonadIO (IORT s m)
+-}
+
+type SMonadIO m = RMonadIO m
 
 -- A different version that enforces the fact the monad must be
 -- of the form (IORT s m). It also _provides_ (rather than requires) that 
 -- m is a member of RMonadIO.
 class RMonadIO (UnIORT m) => SMonad1IO m
 instance RMonadIO m => SMonad1IO (IORT s m)
+
 
 type family UnIORT (m :: * -> *) :: * -> *
 type instance UnIORT (IORT s m) = m
