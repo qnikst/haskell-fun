@@ -22,7 +22,8 @@ import           Data.Proxy
 
 -- Typed device index
 class MkDevice a where
-  mkDevice :: Int -> IO a
+  mkDevice :: Cthulhu s -> Int -> SIO s a
+
 data family DeviceIndex a :: * 
 class HaveIndex a where getIndex :: a -> Int
 -- Hack, because we can't create Typeable instances for data families:
@@ -38,7 +39,7 @@ data DeviceA s = DeviceA {
         deviceAI :: Int
         } deriving Typeable
 instance MkDevice (DeviceA s) where
-  mkDevice i = return (DeviceA i)
+  mkDevice c i = fmap DeviceA (callToCthulhu c i)
 newtype instance DeviceIndex (DeviceA s) = IA Int
 instance HaveIndex (DeviceIndex (DeviceA s)) where getIndex (IA i) = i
 data DeviceARep = DeviceARep deriving Typeable
@@ -49,13 +50,17 @@ data DeviceB s = DeviceB {
         deviceBI :: String
         } deriving Typeable
 instance MkDevice (DeviceB s) where
-  mkDevice i = return (DeviceB (show i))
+  mkDevice c i = fmap DeviceB (callToCthulhu c (show i))
 newtype instance DeviceIndex (DeviceB s) = IB Int
 instance HaveIndex (DeviceIndex (DeviceB s)) where getIndex (IB i) = i
 data DeviceBRep = DeviceBRep deriving Typeable
 instance ToDevRep (DeviceIndex (DeviceB s)) where
     type Rep (DeviceIndex (DeviceB s)) = DeviceBRep
 
+data Cthulhu s = Cthulhu -- not exported
+
+callToCthulhu :: Cthulhu s -> a -> SIO s a
+callToCthulhu _ a = return a
 
 type XXX g s = (ToDevRep (DeviceIndex (g s)), Typeable (Rep (DeviceIndex (g s))), HaveIndex (DeviceIndex (g s)), MkDevice (g s))
 
@@ -74,7 +79,7 @@ registering d f =
       Just mtx  -> 
         withMVar mtx $ \(SomeIndex d') ->
           if typeOf d' == typeRep (toDevRep d)
-          then f (SIO $ mkDevice (getIndex d))
+          then f (mkDevice Cthulhu (getIndex d))
           else error "register: type mismatch"
   where
     mv = getIndex d `Map.lookup` registry
