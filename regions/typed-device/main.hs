@@ -89,8 +89,7 @@ doOnA :: DeviceA s -> SIO s ()
 doOnA (DeviceA i) = SIO $ print i
 
 test1 = withDevice (IA 1) $ \onDevice -> doOnA onDevice
--- Doesn't compile
--- test2 = withDevice (IB 2) $ \onDevice -> doOnA onDevice
-
--- Escape:
--- test3 = withDevice (B 2) $ return
+-- Runtime exception:
+test2 = withDevice (IA 3) $ \onDevice -> doOnA onDevice
+-- Doesn't compile as 's' escapes from it's scope
+-- test3 = withDevice (IB 2) $ return
