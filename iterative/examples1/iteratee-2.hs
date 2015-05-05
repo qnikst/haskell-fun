@@ -3,12 +3,13 @@
 {-# LANGUAGE BangPatterns #-}
 import Data.Iteratee
 import qualified Data.Iteratee as I
-import qualified Data.Iteratee.IO as I
+import Data.Iteratee.IO
 import qualified Data.ByteString.Char8 as BC
 
 import Data.Char (ord)
 import Data.ListLike as LL
 import System.Environment (getArgs)
+import System.IO
 
 -- | An efficient numLines using the foldl' iteratee.
 -- Rather than converting a stream, this simply counts newline characters.
@@ -19,5 +20,6 @@ numLines = I.foldl' step 0
 
 main = do
   (fname:_) <- getArgs
-
-  print =<< run =<< (I.enumFile 65536 fname >>> I.enumPure1Chunk "test") numLines)
+  withFile fname ReadMode $ \hdl1 ->
+    withFile fname ReadMode $ \hdl2 -> do
+      print =<< run =<< ((enumHandle 65536 hdl1 >> enumHandle 65536 hdl2) numLines)

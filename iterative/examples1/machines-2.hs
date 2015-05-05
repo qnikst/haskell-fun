@@ -33,8 +33,7 @@ numLines = fold step (0::Int) where
   step s _ = (s+1)
 
 
-
 main :: IO ()
 main = do
   (f1:f2: _) <- getArgs
-  print . head =<< runResourceT (runT $ (lineSource f1 >> {-`andThen`-} lineSource f2) ~> numLines)
+  print . head =<< runResourceT (runT $ (lineSource f1 `andThen` lineSource f2) ~> numLines)
