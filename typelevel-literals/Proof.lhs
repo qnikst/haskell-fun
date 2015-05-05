@@ -19,6 +19,7 @@
 > import GHC.Exts 
 > import Data.Proxy
 > import Data.Constraint
+> import Data.Type.Bool
 > import Data.Type.Equality
 > import System.Environment
 > import Unsafe.Coerce
@@ -118,7 +119,7 @@ Update. As Richard Eisenberg says
     Saying `LessThan255` without a parameter should be a syntax error,
     but that check was accidentally turned off for 7.8.3, leading to a bogus type error.
 
-Attept-3: carry a contraint in a datatype
+Attempt-3: carry a contraint in a datatype
 ----------------------------------------------------------------------
 
 Now let's keep our 'constraint' in a datatype, here we have 2 proxy,
@@ -238,3 +239,29 @@ Now let's test our code:
 >   where
 >     g :: Proxy n -> Proxy (Guesses n)
 >     g _ = Proxy
+
+
+Attempt-4: using singletons and unary naturals
+---------------------------------------------------------------------
+
+As I'm not a specialist in signletons, so this part of the file may contain
+redundant things.
+
+As a first step lest introduce an unary naturals.
+
+> data N = S N | Z
+
+
+> type family S2N (n :: Nat) :: N where
+>      S2N 0 = Z
+>      S2N n = S (S2N (n-1))
+
+> type family N2S (n :: N) :: Nat where
+>      N2S Z = 0
+>      N2S (S n) = N2S n + 1
+
+> type family (n :: N) .<=? (m :: N) ::Bool where
+>      Z .<=? (S m) = True
+>      (S n) .<=? Z = False
+>      (S n) .<=? (S m) = n .<=? m
+

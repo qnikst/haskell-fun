@@ -422,3 +422,7 @@ This is an actual building of the Taylor serie:
 > test3 = eps 0.05 $ build 1 $ texp * (S 2 (S 2 0))
 
 
+--------------------------------------------
+
+> arithm :: a -> a -> S a
+> arithm z n = 

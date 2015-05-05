@@ -402,3 +402,4 @@ getResource (RV reg) = lIO $ takeMVar reg
 -- For debug reasons:
 unsafelIO :: RMonadIO m => IO a -> m a
 unsafelIO = lIO
+

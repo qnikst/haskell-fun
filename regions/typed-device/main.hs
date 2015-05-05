@@ -33,10 +33,11 @@ class ToDevRep a where
   toDevRep _ = Proxy
 instance ToDevRep a => ToDevRep (Proxy a) where
     type Rep (Proxy a) = a
-
+class HaveMigo s where haveMiGo :: 
 -- Devices
 data DeviceA s = DeviceA {
-        deviceAI :: Int
+          deviceAI :: Int
+        , deviceAprotect :: !(MiGo s)
         } deriving Typeable
 instance MkDevice (DeviceA s) where
   mkDevice c i = fmap DeviceA (callToCthulhu c i)
@@ -61,6 +62,9 @@ data Cthulhu s = Cthulhu -- not exported
 
 callToCthulhu :: Cthulhu s -> a -> SIO s a
 callToCthulhu _ a = return a
+
+
+data MiGo s = MiGo -- not exported
 
 type XXX g s = (ToDevRep (DeviceIndex (g s)), Typeable (Rep (DeviceIndex (g s))), HaveIndex (DeviceIndex (g s)), MkDevice (g s))
 

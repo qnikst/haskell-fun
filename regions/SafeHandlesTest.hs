@@ -1,4 +1,5 @@
 {-# LANGUAGE Rank2Types, TypeFamilies #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 -- Handle-based IO with the assured open/close protocol, see README
 -- This file contains the tests for SafeHandles.hs.
@@ -48,6 +49,7 @@ test2 = runSIO (
     l1 <- shGetLine h3
     return l1)
 
+test2' :: SMonadIO m' => FilePath -> IORT s' m' ()
 test2' fname = do
   h1 <- newSHandle fname ReadMode
   -- If this line is uncommented, test2'r reports an error.
@@ -59,8 +61,6 @@ test2' fname = do
   return ()
 test2'r = runSIO (test2' "fname")
 
-
-	 
 testmany = runSIO(
     do
     h1 <- newSHandle "fname1" ReadMode

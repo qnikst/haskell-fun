@@ -12,17 +12,6 @@ however I could missinterpret some parts.
 TODO:
 -----
 
-1. Get rid of overlapping instances.
-
-> We can do that if we had equality
-> predicate, like TEQ in the commented-out section of
-> SafeHandles. Previously, TEQ needed overlapping instances. However, it
-> can be implemented with closed type families. Therefore, overlapping
-> instances are no longer required. I
-
-While trying to solve TEQ I eventually hit into a possible ghc bug.
-see SafeHandlesTEQ.hs
-
 2. try to have SMonadIO = RMonadIO
 
 > It might be interesting to see if SMonadIO can be defined simply as an
@@ -60,6 +49,19 @@ available in both regions for their livetime.
 As a result we are building a semi-lattice (i.e. a region tree, where branches
 are forks).
 
+2. Get rid of overlapping instances.
+------------------------------------
+
+> We can do that if we had equality
+> predicate, like TEQ in the commented-out section of
+> SafeHandles. Previously, TEQ needed overlapping instances. However, it
+> can be implemented with closed type families. Therefore, overlapping
+> instances are no longer required. I
+
+While trying to solve TEQ I eventually hit into a possible ghc bug.
+see SafeHandlesTEQ.hs
+
+This is not yet possible and it is a "limitation" from type families.
 
 Other ideas:
 ------------
@@ -80,5 +82,3 @@ regions in a safe way (but with unsafe internals).
   This approach have downsides, for example if resource allocation locks some
   external resource then we can't reason about the time when resource is free
   to allocate again. (Same true for regionForkIO).
-
-
