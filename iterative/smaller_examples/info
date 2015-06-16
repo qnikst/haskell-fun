@@ -1,0 +1,2 @@
+1. prepare data - due to xml (?) specification all symbols \r\n should be converted to \n,
+    and all \r to \n.
