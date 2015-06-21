@@ -1,0 +1,188 @@
+# Вступление 
+
+  * Краткий ввод в Cloud-Haskell
+    (с которым, наверное, большинство из вас знакомо)
+  * Текущий статус
+  * Static Pointers
+
+# Что есть  в distributed-programming
+  * SOA
+    - client-server
+      * REST API
+      * HTTP Endpoints
+      * extensible JSON/XML
+  * tighly coupled distributed systems
+    - RPC
+    - message passing
+    - fixed explicit schema
+    - zeromq, rest, hadoop, MR....
+
+# Ну и зачем тут Haskell?
+  * большое количество библиотек
+  * оптимизирующий компилятор
+  * строгая система типов
+  * большое количество средств для написания выразительных программ (--)
+
+# Что дает cloud-haskell
+
+  * Слоган: Erlang в Haskell!
+  * Programming cluster like a whole system
+  Программируй класстер (program cluster like a whole)
+
+  * Запуск одного исполняемого файла, который может работать с ресурсами
+    кластера как с локальными
+  * Является расширением идеи программирования под многопроцессорные системы
+
+# Модель выполнения
+
+  * Использует actor модель
+  * Актёр
+      - явная "конкрурентность"
+      - использование легковесных процессов
+      - канал коммуникации
+      - локальное состояние
+  * Любая программа выразима в actor
+  * Cloud haskell не единственная библиоткека использующая модель актеров в haskell
+
+# Flexibility
+
+  * возможность выбора транспорта (железо и протоколы)
+      - IP
+      - NON IP Networks
+      - Shared Memory
+  * как инициализировать окружение
+      - удаленный доступ по ssh
+      - API облака
+      - планировщик задач (azure)
+      - создание контейнеров (:))
+  * как настраивать окружение
+      - опции командной строки
+      - переменные окружения
+  * как ноды могут находить друг друга
+      - поиск в сети
+      - из известного конфига
+      - настраивается VM
+
+# Архитектура
+
+  * network-transport
+  * network-transport-backend
+  * distributed-process
+  * distributed-process-backend
+  * distributed-process-platform
+
+# Network transport 
+  network-transport-tcp
+  network-transport-p2p
+  network-transport-inmemory
+  network-transport-tcp
+
+# Distributed-process 
+Process layer outline
+I
+Cloud Haskell node manages a set of processes
+I
+transport
+Endpoint
+  per node
+  I
+  Each
+  Process
+    runs in a Haskell thread
+    I
+    has a queue for incoming messages
+    I
+    A lightweight transport
+    Connection
+      per pair of
+      communicating processes
+      I
+      A thread per node to reveive events
+      I
+      dispatches messges to per-process message queues
+      I
+      passes messages and notifications to the node controller
+      I
+      handles network error events (like peer node disconnect)
+      I
+      A thread per node as the “node controller”
+      I
+      responsible for spawning, linking and monitoring
+      I
+      also manages a process registry (named processes)
+      I
+      Other per-node service processes
+      I
+      currently just a logger
+
+# Distributed-process-platform
+# Платформа
+
+-- 10 min
+# Основной API
+  * network-transport
+    * newEndPoint
+    * address
+    * connect 
+    * receive
+
+  * distributed-process
+    * Управление нодами
+      * newLocalNode :: TransportNode -> RemoteTable -> IO ()
+    * Управление процессами
+      * forkProcess  :: LocalNode -> Process () -> IO ()
+      * spawnProcess :: 
+      * ProcessMonad
+    * Обмен сообщениями
+      * ProcessId
+      * send
+      * expect
+      * Serializable
+# Ошибки
+  * ошибки везде!!!
+  * let it fail
+    **ошибка связи считается ошибкой**
+  * процессам дается возможность получать уведомления
+    об ошибках других
+      * link
+      * monitor
+      * logger
+
+# Каналы в Cloud-Haskell
+
+  * Небезопасные связи ...
+  * В типизированном языке можно сделать более лучше
+  * API каналов
+    * newChan
+    * sendChan
+    * receiveChan
+
+# Сериализация значений
+  * Не все значения могут быть сериализованы
+  * Как обходимся с сериализацией
+
+-- 15 min
+# Отправка функций
+  * проблемы
+  * решение на TH
+
+# Проблемы решения на TH
+  * нет рекурсии
+  * легко допустить ошибку
+  * нет проверок типов
+
+# Static pointers FTW!
+  * кем было изобретено
+  * как работает static
+  * гарантии
+
+# Вопросы
+
+-- 5 min
+
+# Erlang vs Haskell
+  * Наличие типизированных каналов
+  * Async
+  * unidiractional links + monitors
+  * возможность использовать shared haskell
+  * 

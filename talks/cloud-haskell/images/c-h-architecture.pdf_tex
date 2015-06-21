@@ -1,0 +1,69 @@
+%% Creator: Inkscape inkscape 0.91, www.inkscape.org
+%% PDF/EPS/PS + LaTeX output extension by Johan Engelen, 2010
+%% Accompanies image file 'c-h-architecture.pdf' (pdf, eps, ps)
+%%
+%% To include the image in your LaTeX document, write
+%%   \input{<filename>.pdf_tex}
+%%  instead of
+%%   \includegraphics{<filename>.pdf}
+%% To scale the image, write
+%%   \def\svgwidth{<desired width>}
+%%   \input{<filename>.pdf_tex}
+%%  instead of
+%%   \includegraphics[width=<desired width>]{<filename>.pdf}
+%%
+%% Images with a different path to the parent latex file can
+%% be accessed with the `import' package (which may need to be
+%% installed) using
+%%   \usepackage{import}
+%% in the preamble, and then including the image with
+%%   \import{<path to file>}{<filename>.pdf_tex}
+%% Alternatively, one can specify
+%%   \graphicspath{{<path to file>/}}
+%% 
+%% For more information, please see info/svg-inkscape on CTAN:
+%%   http://tug.ctan.org/tex-archive/info/svg-inkscape
+%%
+\begingroup%
+  \makeatletter%
+  \providecommand\color[2][]{%
+    \errmessage{(Inkscape) Color is used for the text in Inkscape, but the package 'color.sty' is not loaded}%
+    \renewcommand\color[2][]{}%
+  }%
+  \providecommand\transparent[1]{%
+    \errmessage{(Inkscape) Transparency is used (non-zero) for the text in Inkscape, but the package 'transparent.sty' is not loaded}%
+    \renewcommand\transparent[1]{}%
+  }%
+  \providecommand\rotatebox[2]{#2}%
+  \ifx\svgwidth\undefined%
+    %\setlength{\unitlength}{300.525bp}%
+    \setlength{\unitlength}{250.525bp}%
+    \ifx\svgscale\undefined%
+      \relax%
+    \else%
+      \setlength{\unitlength}{\unitlength * \real{\svgscale}}%
+    \fi%
+  \else%
+    \setlength{\unitlength}{\svgwidth}%
+  \fi%
+  \global\let\svgwidth\undefined%
+  \global\let\svgscale\undefined%
+  \makeatother%
+  \begin{picture}(1,0.91706181)%
+    \put(0,0){\includegraphics[width=\unitlength,page=1]{images/c-h-architecture.pdf}}%
+    \put(0.26044006,0.30213793){\color[rgb]{0,0,0}\makebox(0,0)[b]{\smash{\textbf{network-transport}}}}%
+    \put(0,0){\includegraphics[width=\unitlength,page=2]{images/c-h-architecture.pdf}}%
+    \put(0.26044006,0.54171866){\color[rgb]{0,0,0}\makebox(0,0)[b]{\smash{\textbf{distributed-process}}}}%
+    \put(0,0){\includegraphics[width=\unitlength,page=3]{images/c-h-architecture.pdf}}%
+    \put(0.73960153,0.54171866){\color[rgb]{0,0,0}\makebox(0,0)[b]{\smash{\textbf{distributed-process-backend}}}}%
+    \put(0,0){\includegraphics[width=\unitlength,page=4]{images/c-h-architecture.pdf}}%
+    \put(0.73960153,0.30213793){\color[rgb]{0,0,0}\makebox(0,0)[b]{\smash{\textbf{network-transport-backend}}}}%
+    \put(0,0){\includegraphics[width=\unitlength,page=5]{images/c-h-architecture.pdf}}%
+    \put(0.26044006,0.80791947){\color[rgb]{0,0,0}\makebox(0,0)[b]{\smash{\textbf{distributed-algrorithm}}}}%
+    \put(0,0){\includegraphics[width=\unitlength,page=6]{images/c-h-architecture.pdf}}%
+    \put(0.73960153,0.80791947){\color[rgb]{0,0,0}\makebox(0,0)[b]{\smash{\textbf{user application}}}}%
+    \put(0,0){\includegraphics[width=\unitlength,page=7]{images/c-h-architecture.pdf}}%
+    \put(0.73960153,0.06255719){\color[rgb]{0,0,0}\makebox(0,0)[b]{\smash{\textbf{network-library}}}}%
+    \put(0,0){\includegraphics[width=\unitlength,page=8]{images/c-h-architecture.pdf}}%
+  \end{picture}%
+\endgroup%
