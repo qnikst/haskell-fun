@@ -1,0 +1,630 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8">
+
+		<title>Haskell FFI with Fun</title>
+
+		<meta name="description" content="Лялялялляля">
+		<meta name="author" content="Вершилов Александр">
+
+		<meta name="apple-mobile-web-app-capable" content="yes">
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, minimal-ui">
+
+		<link rel="stylesheet" href="css/reveal.css">
+		<link rel="stylesheet" href="css/theme/black.css" id="theme">
+
+		<!-- Code syntax highlighting -->
+		<link rel="stylesheet" href="lib/css/zenburn.css">
+
+		<!-- Printing and PDF exports -->
+		<script>
+			var link = document.createElement( 'link' );
+			link.rel = 'stylesheet';
+			link.type = 'text/css';
+			link.href = window.location.search.match( /print-pdf/gi ) ? 'css/print/pdf.css' : 'css/print/paper.css';
+			document.getElementsByTagName( 'head' )[0].appendChild( link );
+		</script>
+
+		<!--[if lt IE 9]>
+		<script src="lib/js/html5shiv.js"></script>
+		<![endif]-->
+	</head>
+
+	<body>
+
+		<div class="reveal">
+
+			<!-- Any section element inside of this container is displayed as a slide -->
+			<div class="slides">
+				<section>
+					<h1>Haskell FFI</h1>
+					<h3>Работа с внешним кодом</h3>
+					<p>
+						<small>Автор <a href="http://hakim.se">Вершилов Александр</a> / <a href="http://twitter.com/hakimel">@qnikst</a></small>
+					</p>
+				</section>
+
+        <!-- Ступление -->
+        <section>
+          <h2>Основные проблемы в RTS языке</h2> <!-- XXX -->
+          <ol>
+            <li>Эффекты ввода-вывода</li>
+            <li>Исключения</li>
+            <li>Конкурентность&nbsp;(concurrency)</li>
+            <li style="color:green">Вызов внешнего кода</li>
+          </ol>
+        </section>
+
+        <!-- Основы -->
+        <section>
+          <h2> Коротко обо всем </h2>
+          <pre><code class="haskell" data-noescape data-trim contenteditable style="font-size: 18px;">
+{-# LANGUAGE ForeignFunctionsInterface #-}
+foreign <span style="text-decoration:underline; color:blue">import</span> <span style="text-decoration:underline; color:green">ccall</span> <span style="text-decoration: underline; color: yellow">[safe|unsafe]</span>
+        <span style="text-decoration:underline; color: magenta;">"header.h function-name"</span> <span style="text-decoration:underline; color: white;">c_function</span> :: <span style="text-decoration:underline;color:red">type</span>
+foreign <span style="text-decoration:underline; color:blue">export</span> <span style="text-decoration:underline; color:green">ccall</span> <span style="text-decoration:underline; color: magenta;">"function-name"</span> <span style="text-decoration:underline; color: white;">hs_function</span> :: <span style="text-decoration:underline;color:red">type</span>
+          </code></pre>
+          <ul style="list-style:none;">
+            <li> <span style="text-decoration: underline; color:blue">&nbsp;&nbsp;</span> Направление вызова</li>
+            <li> <span style="text-decoration: underline; color:green">&nbsp;&nbsp;</span> Соглашение о вызовах</li>
+            <li> <span style="text-decoration: underline; color:yellow">&nbsp;&nbsp;</span> Безопасность вызова</li>
+            <li> <span style="text-decoration: underline; color:magenta">&nbsp;&nbsp;</span> Описание символа</li>
+            <li> <span style="text-decoration: underline; color:white">&nbsp;&nbsp;</span> Имя в Haskell</li>
+            <li> <span style="text-decoration: underline; color:red">&nbsp;&nbsp;</span> Тип функции в Haskell</li>
+          </ul>
+        </section>
+
+        <!-- Соглашения о вызовах -->
+        <section>
+             <h2>Соглашения о вызовах </h2>
+<pre><code class="haskell" data-trim data-noescape style="font-size: 18px;">
+foreign import <mark>ccall</mark> safe "header.h function-name" c_function :: type
+</code>
+</pre>
+             <ul>
+               <li> <strong>ccall</strong> &mdash; соглашение о вызовах C</li>
+               <li class="fragment shrink" data-fragment-index="1"> <strong>cplusplus</strong> &mdash; соглашение о вызовах С++</li>
+               <li class="fragment shrink" data-fragment-index="1"> <strong>dotnet</strong> &mdash; соглашение о вызовах .Net</li>
+               <li class="fragment shrink" data-fragment-index="1"> <strong>jvm</strong> &mdash; соглашение о вызовах JVM</li>
+               <li> <strong>stdcall</strong> &mdash; Win32 API</li>
+               <li class="fragment current-visible" data-fragment-index="2"> <strong>prim</strong> &mdash; вызовы GHC</li>
+               <li class="fragment current-visible" data-fragment-index="2"> <strong>capi</strong> &mdash; GHC specific C cc</li>
+             </ul>
+        </section>
+
+        <!-- safe/unsafe simple -->
+        <section>
+          <section>
+           <h2>Безопасность вызовов</h2>
+<pre><code class="haskell" data-trim data-noescape style="font-size: 18px;">
+foreign import ccall <mark>[safe|unsafe]</mark> "header.h function-name" c_function :: type
+</code>
+</pre>
+           <ul>
+             <li><strong color="red">Безопасный вызов (<code>safe</code>)</strong>
+                   <ul style="list-style:none">
+                     <li><span style="color:green">[+]</span> Сохраняет состояние Haskell системы </li>
+                     <li><span style="color:green">[+]</span> Можно вызывать callback-и в Haskell</li>
+                     <li><span style="color:red">[-]</span> Медленный</li>
+                   </ul>
+             </li>
+             <li><strong color="red">Небезопасный вызов (<code>unsafe</code>)</strong>
+                 <ul style="list-style:none">
+                   <li><span style="color:green">[+]</span> Быстрый </li>
+                   <li><span style="color:red">[-]</span> Вызов Haskell код-а - undeined behaviour </li>
+                   <li><span style="color:red">[-]</span> Блокирует capability </li>
+                 </ul>
+             </li>
+           </ul>
+          </section>
+
+         <section>
+            Вызов <code>pid_t getppid(void)</code>
+            <table>
+              <tr><td>            </td><th>safe</th><th>unsafe</th></tr>
+              <tr><td colspan="3">  1 thread sequential </td></tr>
+              <tr><td>non-threaded</td><td><span style="color:red">70.ns</span></td><td><span style="color:green">2.78ns</span></td></tr>
+              <tr><td>threaded    </td><td><span style="color:red">109.7ns</span></td><td><span style="color:green">2.78ns</span></td></tr>
+              <tr><td colspan="3">  1 thread 1000x concurrent (async) </td></tr>
+              <tr><td>non-threaded</td><td>2.494ms</td><td>2.482ms</td></tr>
+              <tr><td>threaded    </td><td>3.750ms</td><td>3.630ms</td></tr>
+            </table>
+          </section>
+        </section>
+
+        <!-- Символ -->
+        <section>
+        <h2>Описание символа</h2>
+<pre><code class="haskell" data-trim data-noescape style="font-size: 18px;">
+foreign import ccall <mark>"header.h function-name"</mark> c_function :: type
+</code>
+</pre>
+       <ul>
+         <li>описание зависит от используемого соглашения о вызовах</li>
+         <li>может содержать специальные значения (напр. <code>"&amp;"</code>)</li>
+         <li>в <code>ccall</code> просто описания символа в объектном файле</li>
+       </ul>
+       </section>
+
+       <section>
+          <section>
+             <h2> Типы </h2>
+<pre><code class="haskell" data-trim data-noescape style="font-size: 18px;">
+foreign import ccall "header.h function-name" c_function :: <mark>type</mark>
+</code>
+</pre>
+             <ul>
+               <li>Обычный тип в Haskell, где переменными могут быть внешние типы </li>
+               <li>Внешние типы: CInt, CWord, Int8, Int16, Int32, Int64, Ptr a, FunPtr a, StablePtr</li>
+               <li>В <code>ccall</code> всегда обозначает функцию: <br />
+                 <code style="font-size: 18px;">foreign import ccall "header.h foo" c_foo :: CInt</code> <br />
+                 <code style="font-size: 18px;"> extern int foo();</code>
+                </li>
+              </ul>
+          </section>
+
+          <section>
+            <h2>IO vs Pure</h2>
+<pre><code class="haskell" data-trim data-noescape style="font-size: 18px;">
+foreign import ccall unsafe "math.h sin  c_sin    :: Double -&gt; Double
+foreign import ccall unsafe "math.h sin" c_sin_io :: Double -&gt; IO Double
+</code></pre>
+            <ul>
+              <li> функция должна быть чистой (результат зависит только от аргументов)</li>
+              <li> функция должна быть потокобезопасной (reentrant) </li>
+            </ul>
+          </section>
+
+          <section>
+              Типы передаваемые в <code>Ptr</code>
+              <ul>
+               <li> "Прикрепленные" (pinned):
+                    <ul style="list-style:none">
+                      <li><span style="color:green">[+]</span> Можно напрямую передавать во внешний код(*)</li>
+                      <li><span style="color:red">[-]</span> Не перемещаются GC &mdash; приводят к фрагментации памяти</li>
+                      <li><span style="color:red">[-]</span> Приводят к повышенному потреблению памяти</li>
+                    </ul>
+               </li>
+               <li> "Не прикрепленные" (Unpinned):
+                    <ul style="list-style:none">
+                      <li><span style="color:green">[+]</span> перемещаются GC</li>
+                      <li><span style="color:red">[-]</span> нельзя напрямую передавать во внешний код(*)</li>
+                    </ul>
+               </li>
+             </ul>
+          </section>
+
+          <section>
+             <table>
+               <tr><th>Pinned</th><th>Unpinned</th></tr>
+               <tr><td>ByteArray#</td><td>ByteArray#</td></tr>
+               <tr><td>Data.ByteString</td><td>Data.ShortByteString</td></tr>
+               <tr><td>Data.Vector.Storable</td><td>Data.Vector.Unboxed, Data.Vector</td></tr>
+               <tr><td>&nbsp;</td><td>Data.Text</td></tr>
+             </table>
+          </section>
+
+          <section>
+            <ul>
+              <li><code>Foreign.Marshal</code> байты, массивы, строки
+                  <ul>
+                    <li>alloca, calloc, malloc</li>
+                    <li>Pool &mdash; управление группой ресурсов</li>
+                  </ul>
+              </li>
+            </ul>
+          </section>
+        <section>
+          <ul>
+              <li><code>Foreign.StablePtr</code> &mdash; структура данных гарантирована не будет удалена, пока не будет
+                вызвано <code>hs_free_stable_ptr</code>, <code>freeStablePtr</code>
+<pre><code class="C" style="font-size: 18px">
+typedef void *HsStablePtr;
+</code></pre>
+                <ul>
+                  <li>полезен, гарантировать управление памятью из внешнего языка и удалению без возвращения исполнения RTS</li>
+                  <li>позволяет сохранять состояние при перезгрузке ghci/модулей</li>
+                  <li>сохранение функции с C коде для её последующего запуска</li>
+                </ul>
+              </li>
+            </ul>
+        </section>
+
+        <section>
+          <h2>Работа со структурами</h2>
+<pre><code class="haskell" style="font-size: 18px">
+{-# LANGUAGE EmptyDataDecls #-}
+data CStruct
+
+newtype PtrEnv = PtrEnv (Ptr EnvHandle)
+
+class Storable a where
+  sizeOf :: a -> Int
+  alignment :: a -> Int
+  peekElemOff :: Ptr a -> Int -> IO a
+  pokeElemOff :: Ptr a -> Int -> a -> IO ()
+  peekByteOff :: Ptr b -> Int -> IO a
+  pokeByteOff :: Ptr b -> Int -> a -> IO ()
+  peek :: Ptr a -> IO a
+  poke :: Ptr a -> a -> IO ()
+</code></pre>
+        </section>
+
+
+        <section>
+          Для создания Storable структур отвеачающих структура внешних языков нужна дополнительная информация,
+          такая как отступы, размеры структур и другие бонусы.
+          <ul>
+            <li>hsc2hs
+              <ul>
+                <li>Дает использовать макросы <code>peek,poke,ptr,enum, sizeof</code></li>
+                <li><code>.hsc</code></li>
+                <li><code>build-tool: hsc2hs</code></li>
+                <li>достаточно низкоуровневый</li>
+              </ul>
+          </ul>
+        </section>
+      </section>
+
+      <section>
+        <section>
+          <h2>Экспорт функций</h2>
+<pre><code class="haskell" style="font-size: 18px">
+module Foo where
+foreign export ccall "function-name" hs_function :: type
+</code></pre>
+          <p>Создаются файлы
+          <ul>
+            <li>Foo_stub.c</li>
+            <li>Foo_stub.h</li>
+            <li>Foo_stub.o</li>
+          </ul>
+          </p>
+
+<pre><code class="haskell" style="font-size: 18px">
+#include "Foo_stub.h"
+#include &lt;HsRTS&gt;
+hs_init(&amp;argc, &amp;argv);
+hs_free();
+</code></pre>
+
+<pre><code style="font-size:18px">
+grep -A 1 "*** Linker" ghc_output | tail -n 1 | grep -i -- '-L.*' &gt; link_options
+</code></pre>
+        </section>
+
+        <section>
+          <h2>Динамические вызовы</h2>
+<pre><code class="haskell" style="font-size: 18px">
+foreign import ccall "wrapper" :: haskelltype -> IO (FunPtr haskelltype)
+</code></pre>
+  <ul>
+    <li>Освобождение:
+    <ul><li><code>freeHaskellFunPtr</code></li><li><code>hs_free_fun_ptr</code></li></ul>
+    </li>
+  </ul>
+  <ul>
+    <li>Создание динамической функции из <code>C</code>:</li>
+  </ul>
+<pre><code class="haskell" style="font-size: 18px">
+foreign import ccall "&" :: FunPtr (FunPtr -> IO ())
+</code></pre>
+        </section>
+
+        <section>
+        <dl>
+          <dt>Static function</dt><dd>foreign import ccall "static stdlib.h system" system :: Ptr CChar -&gt; IO ()</dd>
+          <dt>Static address</dt><dd>foreign import ccall "errno.h &amp;" errno :: Ptr CInt</dd>
+          <dt>Dynamic import</dt><dd>foreign import ccall "dynamic" mkFun :: FunPtr (CInt -&gt; IO ()) -&gt; (CInt -> IO ())</dd>
+          <dt>Dynamic export</dt><dd>foreign import ccall "wrapper" :: (CInt -&gt; IO ()) -> FunPtr (CInt -> IO ())</dd>
+        </dl>
+        </section>
+      </section>
+
+      <section>
+        <section>
+           <h2>Опять к безопасности</h2>
+            <pre><code class="c" data-trim style="font-size: 18px">
+void bottom() { for(;;) }
+            </code></pre>
+            <pre><code class="haskell" data-trim style="font-size: 18px;">
+foreing import safe "bottom" c_safe_bottom :: IO ()
+foreign import unsafe "bottom" c_unsafe_bottom :: IO ()
+main :: IO ()
+main = do
+  forkIO $ safe_bottom 1
+  yield
+  print "Pass"
+  forkOS $ unsafe_bottom 1 -- forkOn 2, forkIO
+  yield
+  print "Pass"
+</code></pre>
+            <ul>
+              <li>unsafe вызовы блокируют capability</li>
+              <li>для того, чтобы провести сборку мусора нужны все capability</li>
+            </ul>
+        </section>
+
+        <section>
+          <p>система должна вести себя так, как будто каждый Haskell поток реализован потоком OS.</p>
+          <ul>
+             <li>safe вызов блокирует только тот поток, который выполняет вызов</li>
+             <li>программист может указывать, что группа вызовов должна происходить из одного потока OS</li>
+             <li>Haskell потоки созданные вызовами из внешнего языка должны быть независимы от времени жизни вызвавшей их функции</li>
+          </ul>
+        </section>
+
+        <section>
+          <h2>Модели огранизации потоков</h2>
+          <dl>
+            <dt>один-к-одному</dt><dd>каждому потоку Haskell соотвестсвует поток OS<dd>
+            <dt>все-к-одному</dt><dd>всем потокам Haskell соотвествует один поток OS</dd>
+            <dt>гибридная<dt><dd>каждому потоку OS соответствует нескольо потоков Haskell</dd>
+          </dl>
+        </section>
+
+        <section>
+          <h2>forkIO, forkOS, forkOn</h2>
+          <table>
+            <tr><td>&nbsp;</td><th>bound-to-OS</th><th>bound-to-HEC</th><th>bound-to-CPU</th></tr>
+            <tr><td>forkOS</td><td> + </td><td> - </td><td> * </td></tr>
+            <tr><td>forkOn</td><td> - </td><td> + </td><td> -qa   </td></tr>
+            <tr><td>forkIO</td><td> - </td><td> - </td><td> -     </td></tr>
+            <tr><td>callback</td><td> + </td><td> - </td><td> * </td></tr>
+          </table>
+          Для политики управления потоками RTS, нет разницы какой способ создания потока использовался.
+        </section>
+      </section>
+
+      <section>
+          <section>
+          <h2> CApiFFI </h2>
+          <ul>
+            <li>Можно импортировать значения:
+  <pre><code class="haskell" data-trim style="font-size: 18px">
+     foreign import capi "pi.h value pi" :: Double
+  </code></pre>
+  <pre><code class="haskell" data-trim style="font-size: 18px">
+const double pi = 3.14
+#define pi 3.14
+</code></pre>
+            </li>
+            <li>Происходит проверка типов
+<pre><code class="haskell" data-trim style="font-size: 18px">
+/tmp/ghc3535_0/ghc_3.c:8:1:
+     error: too few arguments to function ‘test’
+          HsInt ghczuwrapperZC0ZCmainZCMainZCtest(HsInt a1) {return test(a1);}
+
+pi.h:7:5:
+     note: declared here
+          int test(int,int);
+</code></pre>
+            </li>
+            <li>Аннотации типов
+<pre><code class="haskell" data-trim style="font-size: 18px">
+data {-# CTYPE "unistd.h" "useconds_t" #-} T = ...
+</code></pre>
+            </li>
+          </ul>
+          </section>
+
+          <section>
+генерируемый <code>C</code> файл
+<pre><code class="c" data-trim style="font-size: 18px">
+#define IN_STG_CODE 0
+#include "Rts.h"
+#include "Stg.h"
+#ifdef __cplusplus
+extern "C" {
+#endif
+#include &lt;pi.h&gt;
+  HsInt ghczuwrapperZC0ZCmainZCMainZCtest(HsInt a1) {return test(a1);}
+#include &lt;pi.h&gt;
+  HsDouble ghczuwrapperZC1ZCmainZCMainZCpi2(void) {return pi2;}
+#include &lt;pi.h&gt;
+  HsDouble ghczuwrapperZC2ZCmainZCMainZCpi(void) {return pi;}
+#ifdef __cplusplus
+}
+#endif
+</code></pre>
+          </section>
+        </section>
+
+        <section>
+          <h2>Сигналы</h2>
+<pre><code class="c" data-trim style="font-size: 18px">
+#include <unistd.h>
+int bogus() {
+    return usleep(100000000);
+}
+</code></pre>
+<pre><code class="haskell" data-trim style="font-size: 18px">
+  forkIO $ do
+    print =<< getCurrentTime
+    ret <- hsBogus
+    print =<< getCurrentTime
+    en <- getErrNo
+    print ret
+    print (errnoToIOError "none" Nothing Nothing)
+</code></pre>
+<pre><code data-trim style="font-size: 18px;">
+2015-12-06 06:47:57.817476 UTC
+2015-12-06 06:47:57.827309 UTC
+-1
+test: interrupted (Interrupted system call)
+</code></pre>
+        </section>
+
+        <section>
+          <h2>Автоматизация</h2>
+          <ul>
+            <li>c2hs
+              <ul><li>специфический синтаксис</li>
+                  <li>не работает со сложными типами (GADT, Kinds)</li>
+                  <li>периодически проявляются баги на различных архитектурах</li>
+              </ul>
+            </li>
+            <li>библиотеки автоматической генерации байндингов</li>
+            <li>inline-c
+              <ul>
+                <li>не аккуратная сборка</li>
+                <li>использование TH - проблемы с линкером</li>
+              </ul>
+            </li>
+          </ul>
+        </section>
+
+        <section>
+          <section>
+          скорее всего, это никогда не понадобится, но хорошо знать, что оно есть
+          </section>
+          <section>
+          <h2>C--</h2>
+
+          <p>Один из промежуточных языков при компиляции GHC.</p>
+
+          <p>
+          <a href="https://ghc.haskell.org/trac/ghc/wiki/Commentary/Rts/Cmm">https://ghc.haskell.org/trac/ghc/wiki/Commentary/Rts/Cmm</a><br>
+          <a href="https://ghc.haskell.org/trac/ghc/wiki/Commentary/Compiler/CmmType">https://ghc.haskell.org/trac/ghc/wiki/Commentary/Compiler/CmmType</a><br>
+          </p>
+
+          <p>Но на нём можно писать код!</p>
+
+          </section>
+<section>
+<pre><code class="haskell" data-trim style="font-size: 18px" data-contenteditable>
+#include "Cmm.h"
+#define W_TO_SHORT(x) %lobits32(x)
+crc16u { /* R1 uint32_t input, R2 uint16_t data, R3 Int size */
+    I32 c;
+    if (R3 == 0) goto end;
+    c = R1;
+    R4 = 0;
+    loop:
+    c  = c + W_TO_SHORT(bits16[R2+R4]);
+    R4 = R4 + 2;
+    if (R4&lt;R3) goto loop;
+    if (R4&gt;R3) {
+        c = c + W_TO_SHORT(bits8[R2+R3] &lt;&lt; 8);
+    }
+    R1 = TO_W_(c);
+    end:
+    jump %ENTRY_CODE(Sp(0));
+}
+</code></pre>
+      </section>
+      <section>
+      <dl>
+        <dt>cabal файл</dt>
+        <dd><code>c-sources:           cbits/crc16-prim.cmm</code></dd>
+        <dt>haskell файл</dt>
+        <dd>&nbsp;</dd>
+      </dl>
+<pre><code class="haskell" data-trim>
+{-# LANGUAGE GHCForeignImportPrim #-}
+{-# LANGUAGE MagicHash #-}
+{-# LANGUAGE UnliftedFFITypes #-}
+foreign import prim "crc16u" p_crc16_u#
+  :: Word# -&gt; Addr# -&gt; Word# -&gt; Word#
+
+icsum16p :: Word32 -&gt; Addr# -&gt; Int -&gt; Word32
+icsum16p !(W32# w#) a# !(I# l#) =
+  W32# (narrow32Word#
+         (p_crc16_u# w# a# (int2Word# l#)))
+  ...
+  let (mem,_ofs,len) = BS.toForeignPtr (BS.pack (x++x))
+      mem' = unsafeForeignPtrToPtr mem
+      (Ptr a#) = mem'
+  in icsum16p 0 a# len
+</code></pre>
+      </section>
+
+      <section>
+        <h2>Зачем это нужно?</h2>
+        <ul style="list-style:none">
+          <li><span style="color:red">[-]</span> микроптимизации</li>
+          <li><span style="color:green">[+]</span> атомарные инструкции (lock-free алгоритмы)</li>
+          <li><span style="color:green">[+]</span> низкоуровневое взаимодействие с runtime системой</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>ещё чуть-чуть?</h2>
+      </section>
+
+      <section>
+         Сборка:
+         <ul>
+           <li>Берём C-код</li>
+           <li>собираем clang:
+<pre><code>clang -emit-llvm -S input.c -O input.llp</code></pre></li>
+           <li>меняем calling convention:
+               <pre><code>sed -e 's/call void/call cc10 void/; s/define void/define cc10 void/;'</code></pre>
+           </li>
+           <li>собираем компилятором llvm
+<pre><code>llc -O3 -relocation-model=static -filetype=obj input.llp -o ITCHv41.o</code></pre></li>
+         </ul>
+<pre><code>
+foreign import prim "function" c_function
+   :: Addr# -&gt; Addr# -&gt; (# Int#, Word#, Word# #)</pre></code>
+      </section>
+      <section>
+<pre><code>
+typedef void (*HsCall)(int64_t*, int64_t*, int64_t*
+    , int64_t, int64_t, int64_t, int64_t
+    , int64_t, int64_t, int64_t*
+    , float, float, float, float, double, double);
+
+extern void in_word_setprim1(
+  int64_t* restrict baseReg, int64_t* restrict sp,
+  int64_t* restrict hp, const uint8_t* restrict buffer, // R1
+  int64_t length, // R2
+  int64_t r3, int64_t r4, int64_t r5, int64_t r6,
+  int64_t* restrict spLim,
+  float f1, float f2, float f3, float f4, double d1, double d2)
+{
+  const HsCall fun = (HsCall)sp[0];
+  const int64_t iUndef; const float fUndef; const double dUndef;
+  return fun(...);
+}
+</code></pre>
+      </section>
+    </section>
+</div>
+
+		</div>
+
+		<script src="lib/js/head.min.js"></script>
+		<script src="js/reveal.js"></script>
+
+		<script>
+
+			// Full list of configuration options available at:
+			// https://github.com/hakimel/reveal.js#configuration
+			Reveal.initialize({
+				controls: true,
+				progress: true,
+				history: true,
+				center: true,
+
+				transition: 'slide', // none/fade/slide/convex/concave/zoom
+
+				// Optional reveal.js plugins
+				dependencies: [
+					{ src: 'lib/js/classList.js', condition: function() { return !document.body.classList; } },
+					{ src: 'plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+					{ src: 'plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+					{ src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } },
+					{ src: 'plugin/zoom-js/zoom.js', async: true },
+					{ src: 'plugin/notes/notes.js', async: true }
+				]
+			});
+
+		</script>
+
+
+	</body>
+</html>
