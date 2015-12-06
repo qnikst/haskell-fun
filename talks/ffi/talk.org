@@ -1,0 +1,353 @@
+* Talk
+  Talk about FFI and relevant issues, difficutly intermediate
+  post should contain as basic features and compex one.
+  All complex ones should be based on a read haskell programs.
+* Slides
+** TODO Slide 0: TLDR
+#+Keywords: Overview
+*** Idea:
+    main idea of the lecture, this is all quite simple and
+    you know almost everything
+*** Contents:
+    * FFI Cheatsheet
+      + Calling conventions:
+        - C
+        - Fortran
+      + import <callconv> <safety> impent var :: ftype
+      + callconv :: ccall
+      + Foreign types Char,Int,Double,Float,Bool, + Int8,Int16,Int32,Int64,Ptr a, FunPtr a, StablePtr
+
+
+   FFI Cheatsheet
+     Calling conventions: C, Fortran,
+     CTypes: CInt, CWord, CString, Ptr, CString
+     Memory: ForeignPointer, StableName, StablePtr
+     C API:
+     FFI wrappers: safe / unsafe
+     FFI wrappers: import / export / prim
+** TODO Slide: Problem
+*** Content:
+    Nice image here
+** Slide: Calling conventions
+   import ccall "static stdlib.h" system :: Ptr CChar -> IO CInt
+
+   Conventions by Haskell 2010:
+   * ccall :: Calling convention of the standard C compiler on a system 
+   * cplusplus :: Calling convention of the standard C++ compiler on a system
+   * dotnet :: Calling convention of the .Net platform
+   * jvm :: Calling convntion of the Java virtual machine
+   * stdcall :: Calling convention of the Win32 API (matches Pascal convention)
+
+   Not reflefted in Haskell-2010, but supported by GHC
+   * prim :: Calling convention of the standard^W Glasgow Haskell Compiler
+   * capi :: GHC specific C compiler calling convention
+
+   Supported by GHC: call, stdcall, (prim, capi).
+** TODO Slide: !!! CApi: features over ccall
+   + foreign capi "pi.h value pi" :: Double
+	- load values (const double pi = 3.14)
+	- load macros (#define pi 3.14)
+   + CTYPE
+     data {-# CTYPE "unistd.h" "useconds_t" #-} T = ...
+
+    can load macros (? but we can even now, don't we?)   
+*** Question: Rather than generating code to call f according to the platform's ABI, we instead call f using the C API defined in the header header.h.
+*** Question: http://stackoverflow.com/questions/15859755/gcc-warning-when-using-capi-calling-convention
+    
+** TODO Slide: Foreign types
+
+   Marshallable types
+
+   Warning: GHC does not support passing structures as values.
+
+   Extentions by ghc for primitive types.
+** TODO Slide: Some tools
+   - haskell bindings
+   - c2hs
+   - hsc2hs
+** TODO Slide: Working with structures
+** TODO Slide: minimal example 
+** TODO Slide: using inline-c
+
+
+** TODO Slide: Exporting functions & function pointers
+** TODO Slide: !!! Interruptible system calls
+*** TODO output of the strace
+*** TODO 
+
+** TODO Slide 1: Main information
+   Keywords: kernel, userspace, call-FFI-function, STG
+   Idea:
+   Contents:
+
+** TODO Bound threads and unbound threads.
+#+Keywords: HEC, bound thread, unbound thread
+*** Content: 
+    HEC: scheduler
+
+    Non-bound thread:
+    + forkIO -- simple green thread, could be moved between HECs
+    + forkOn -- simple 
+
+    Bound threads:
+    + forkOS -- thread that is bound to OS thread.
+
+    RTS could bound OS threads to CPU (--with-rtsopns +RTS -qa -RTS)
+
+*** Question: is HEC bound to CPU.
+  Questions: is HEC bound to CPU - 
+       RTS options: -qa
+          Use the OS's affinity facilities to try to pin OS threads to CPU cores.
+
+          When this option is enabled, the OS threads for a capability i
+          are bound to the CPU core i using the API provided by the
+          OS for setting thread affinity.  e.g. on Linux
+          GHC uses sched_setaffinity().
+
+          Depending on your workload and the other activity on
+          the machine, this may or may not result in a performance
+          improvement.  We recommend trying it out and measuring the
+          difference.
+
+   rts/Task.c
+    if (RtsFlags.ParFlags.setAffinity) {
+        setThreadAffinity(cap->no, n_capabilities);
+    }
+*** TODO Better benchmarks, some nice results (?)
+*** TODO Logs of the thread moving between HEC, event log
+*** TODO More info on what HEC is
+
+** TODO Slide: Safe and unsafe FFI, how threads are created and locked
+   Keywords:
+   Idea: safe and unsafe FFI, how threads are created and locked.
+   measure overhead.
+   Contents: 
+   
+** TODO Slide: IO action example
+   Keywords:
+   Idea: IO action example
+   Contents:
+
+** TODO Slide: Tread local storage in use
+   Keywords:
+   Idea: TLS, bound threads (example)
+   Contents:
+
+** TODO Slide: Primitives operations overview
+   Keywords:
+   Idea: Primitive operations overview
+   Contents:
+
+** TODO Slide: Primitives operations example
+   Keywords:
+   Idea: Primitive operations example
+   Contents:
+
+** TODO Slide: C--, examples inline Assembler
+   Keywords:
+   Idea: C--, examples inline ASM (?)
+   Contents:
+
+   Examples: syscall, llvm compiler+optimizations
+
+   
+* Books
+** DONE Extending Haskell Foreign Function Interface with concurrency
+*** safe - may indirectly invoke Haskell functions
+       need to store state of the Haskell system
+    unsafe - may not invoke Haskell functions (UB)
+       can be implemented as inline function call
+*** foreing import - out-call
+    foreing export - in-call
+*** Everything is not so easy with concurrency
+    One-to-one: Haskell Thread <-> OS Thread
+    Multiplexed: N Haskell Thread -> OS Thread
+    Hybrid: N Haskell Threads - N OS Threads (workers)
+*** Design princible:
+    the system should behave as if it was implemeted with one OS Thread
+    implementing each Haskell Thread.
+*** Requirement 1.
+    A safe foreign call that blocks should block only the Haskell thread making a call
+    
+    Nothing about unsafe (because of performance reasons).
+
+    It's possible to solve this in multiplexed version if each foreign call is
+    executed in it's own thread. Payoff for a cost of OS thread switch at every (safe) foreign call.
+
+    Hybrid model - have pool of OS threads, each of which can play the role of the Haskell
+    execution thread, but only one at a time does. At a safe foreign calll, Haskell execution
+    thread leaves the Haskell world to execute a foreign call. No OS switch required, but
+    inter-OS threads communication is required.
+*** Requirement 2
+    is must be possible for a programmer to specify that a related group of foreign
+    calls are all made by the same OS thread.
+
+    Thread Local State, fast logging.
+    
+    1-1: automatically
+    mutiplexes: if fails to requirement-1
+    hybrid: ok
+
+    bound thread - has a fixed OS thread for making FFI calls.
+    unbound thread - has no associated OS thead; FFI calls from this thread may be made by any OS Thread.
+
+    Each bound thread has a dedicated associated OS thread. No more that 1 bound thread is created in
+    such a way.
+*** Requirement 3
+    a. Haskell threads spawned in a foreign in-call continue to run after in-call returns
+    b. multiple OS threads may concurrently invoke multiple Haskell functions (via foreign export), and
+       there invokations should run concurrently
+*** Callbacks
+
+    It must be possible to ensure that a foreign out-call from Haskell is made by the same of thread that
+    made the foreign in-call.
+
+
+
+
+
+** DONE FFI Using
+https://wiki.haskell.org/GHC/Using_the_FFI
+
+*** Functions that are macros
+    solutions: 1 write a wrapper int foo_wrap(int x) { return foo(x) };
+    This is not cool, see CAPI
+
+*** FunPtr's and callbacks
+    import foreing ccall "wrapper" :: HaskellType -> IO (FunPtr HaskellType)
+    freeHaskellFunPtr
+
+    hs_free_fun_ptr
+    import forein ccall "&" :: FunPtr (FunPtr -> IO ())
+
+*** Improving efficiency
+    safe and unsafe calls
+
+*** GHC and DLL
+    trace put stuff to debugger if no stderr
+
+** DONE FFI Introduction
+
+*** Main thread in C
+    foreign export ccall foo :: Int -> String
+
+    ghc -> Foo.hi, Foo.o, Foo_stub.c, Foo_stub.h, Foo_stub.o
+
+    in C:
+    #include "Foo_stub.h"
+
+    hs_init(&argc, &argv);
+    ....
+    hs_free();
+
+    grep -A 1 "*** Linker" ghc_output | tail -n 1 | grep -o -- "-L.*" > link_options
+    
+** DONE FFI Cook book
+https://wiki.haskell.org/FFICookBook
+
+*** passing opaque structures
+    empty data decls: data OCIStruct
+    newtype PtrEnv = PtrEnv (Ptr EnvHandle)
+
+*** passing in-out values
+    alloca $ \ptr_err -> do
+      c_function ptr_err
+      c <- peek ptr_err
+      throwIfNonZero c
+
+*** passing strings
+    withCString/newCString/
+
+*** working with structs
+    hsc2hs #{peek, poke, sizeof
+
+** DONE RHW
+   {-# LANGUAGE ForeignFunctionInterface #-}
+
+   no sideeffects + thread safe (reentrant)
+   Storable, Marshaling, Bytestrings
+
+** DONE FFI Standart
+https://www.haskell.org/onlinereport/haskell2010/haskellch8.html
+
+foreign import ccall foo :: CInt  -- C function with 0 agruments
+foreign import ccall "&" bar :: Ptr CInt -- access to variable
+
+Static functions:
+   foreing import ccall "static stdlib.h" system :: Ptr CChar -> IO ()
+Static address:
+   foreing import ccall "errno.h &errno" errno :: Ptr CInt
+Dynamic import:
+   foreign import ccall "dynamic" mkFun :: FunPtr (CInt -> IO ()) -> (CInt -> IO ())
+Dynamic wrapper:
+   foreign import ccall "wrapper" wrap :: (CInt -> IO ()) -> FunPtr (CInt -> IO ())
+
+** DONE Safety first: FFI and threading
+   http://blog.ezyang.com/2010/07/safety-first-ffi-and-threading/
+
+   runtime can't preempt unsafe FFI calls
+
+** DONE Parsing market data with ragel, clang and ghc primops
+http://breaks.for.alienz.org/blog/2012/02/09/parsing-market-data-feeds-with-ragel/
+
+overhead due to switching of the calling convention and parameter loading
+
+1. C look like haskell
+
+cc10 - in LLVM
+
+2. jump to return address on the top of the STG (sp argument)
+   with results of parsing for example
+3. such function will be converted to a tail-call my llc (LLVM parser)
+4. compile that to LLVM 
+   ragel -G2 ITCHv42.r1 -O ITCHv42.c
+   clang -O3 -emit-llvm -S ITCHv41.c -O ITCHv41.ll
+
+5. sed -e 's/call void/call cc10 void/; s/define void/define cc10 void/;'
+6. llc -O3 -relocation-model=static -filetype=obj ITCHv41.llp -o ITCHv41.o
+7. foreign import prim "ITHv41_run" 
+      parse :: Addr# -> Addr# -> (# Int#, Word#, Word# #)
+http://breaks.for.alienz.org/blog/2012/05/23/ffi-vs-primops/
+
+*** TODO Some simple task that will show that we are cquil.
+
+*** TODO The great GHC Primop Shootout
+http://breaks.for.alienz.org/blog/2012/05/23/ffi-vs-primops/
+** TODO Primops for syscalls
+https://github.com/hsyl20/ViperVM/blob/master/src/lib/ViperVM/Arch/X86_64/Linux/syscall.c
+
+** TODO Libffi package
+https://hackage.haskell.org/package/libffi
+   very minimalisting binding to ffi.
+   Example: mock c library.
+
+** TODO dynamic-linker-template
+https://hackage.haskell.org/package/dynamic-linker-template
+
+** TODO TLS Use cases
+http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2014/n4324.html
+
+** TODO TLS to reduce synchronization
+https://software.intel.com/en-us/articles/use-thread-local-storage-to-reduce-synchronization
+
+** TODO Intel guide
+https://software.intel.com/en-us/articles/intel-guide-for-developing-multithreaded-applications
+
+** Source code:
+   libraries/base/GHC/IO/BufferedIO.hs
+   libraries/base/GHC/IO/FD.hs
+   libraries/base/GHC/IO/Handle/Text.hs
+   libraries/base/System/IO.hs
+   libraries/base/Posix/Internals.hs
+
+* PROGRAM examples
+** Nginx module
+https://www.airpair.com/nginx/extending-nginx-tutorial
+https://github.com/abedra/nginx-auth-token-module/blob/master/ngx_http_auth_token_module.c
+https://github.com/openresty/lua-nginx-module/blob/master/src/ngx_http_lua_worker.c
+https://github.com/usamadar/ngx_hello_world
+http://www.evanmiller.org/nginx-modules-guide.html#components
+http://usamadar.com/2012/09/02/writing-a-custom-nginx-module/
+** LD Preload
+http://fluxius.handgrep.se/2011/10/31/the-magic-of-ld_preload-for-userland-rootkits/
+https://rafalcieslak.wordpress.com/2013/04/02/dynamic-linker-tricks-using-ld_preload-to-cheat-inject-features-and-investigate-programs/

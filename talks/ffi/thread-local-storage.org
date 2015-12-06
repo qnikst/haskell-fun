@@ -1,0 +1,21 @@
+Thread local storage analysis.
+
+
+* Links
+
+** Thread local storage vs non-blocking data structures
+  Properties:
+  - url:: https://software.intel.com/en-us/comment/1578348
+
+** Use thread local storage to reduce synchronization
+   Properties:
+  - url:: https://software.intel.com/en-us/articles/use-thread-local-storage-to-reduce-synchronization
+  
+  When different threads write to the counter, they should
+  have some blocking mechanism. As a result local storage
+  may improve speed, by avoiding blocking code.
+
+  1. Statistical counting (perfbook)
+  2. Low overhead logging 
+  3. lightweight reader writer locks
+
