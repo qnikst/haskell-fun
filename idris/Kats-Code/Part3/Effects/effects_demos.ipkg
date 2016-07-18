@@ -1,0 +1,4 @@
+package demos
+
+modules = Door1, Door2, Expr, Queens, Select
+opts = "-p effects"
