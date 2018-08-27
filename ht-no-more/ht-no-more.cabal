@@ -19,10 +19,10 @@ executable ht-no-more
   build-depends:       base >=4.10 && <4.11
   -- hs-source-dirs:      
   default-language:    Haskell2010
-  -- c-sources:           wrapper.c
 
   -- we can't cheat now, we must process options on our own
   -- Warning: -rtsopts and -with-rtsopts have no effect with -no-hs-main.
   --  Call hs_init_ghc() from your main() function to set these options.
   ghc-options:         -no-hs-main
                        -threaded
+                       -optl-Wl,-wrap,getNumberOfProcessors

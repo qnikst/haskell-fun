@@ -10,14 +10,36 @@
 #include "Rts.h"
 #endif
 
+static uint32_t procno = 0;
+
+uint32_t __real_getNumberOfProcessors(void);
+
+uint32_t __wrap_getNumberOfProcessors(void)
+{
+   if (procno==0) {
+      return __real_getNumberOfProcessors();
+   } else {
+     return procno;
+   }
+}
+
 int setcpus() {
    cpu_set_t set;
    CPU_ZERO(&set);
    FILE *cpuinfo = fopen("/proc/cpuinfo", "rb");
    char *arg = 0;
    size_t size = 0;
+   int ret = 0;
    int current_cpu = -1;
    int current_core = -1;
+   int cpu_count = 0;
+
+   ret = sched_getaffinity(0, sizeof(cpu_set_t), &set);
+   if (ret == -1) {
+     fprintf(stderr, "Error: failed to get cpu affinity");
+     return 0;
+   }
+
    while(getdelim(&arg, &size, '\n', cpuinfo) != -1)
    {
       if (strstr(arg, "core id") != NULL) {
@@ -27,14 +49,30 @@ int setcpus() {
 	   int cpu = atoi(found+1);
 	   if (current_cpu != cpu) {
               current_cpu++;
-	      CPU_SET(current_core, &set);
+	      if (CPU_ISSET(current_core, &set)) {
+	         CPU_SET(current_core, &set);  // XXX: this is noop.
+	         fprintf(stderr, "%i real core - enabling\n", current_core);
+		 cpu_count++;
+	      } else {
+	         fprintf(stderr, "%i was disabled - skipping\n", current_core);
+	      }
+           } else {
+              fprintf(stderr, "%i is virual - skipping\n", current_core);
+	      CPU_CLR(current_core, &set);
            }
         } else {
 	   return 1;
 	}
       }
    }
-   sched_setaffinity(0, sizeof(cpu_set_t), &set);
+   ret = sched_setaffinity(0, sizeof(cpu_set_t), &set);
+   if (ret == -1) {
+     fprintf(stderr, "Error: failed to set affinities - falling back to default procedure\n");
+     procno = 0;
+   } else {
+     fprintf(stderr, "Define number of affinities as %i\n", cpu_count);
+     procno = cpu_count;
+   }
    free(arg);
    fclose(cpuinfo);
    return 0;
