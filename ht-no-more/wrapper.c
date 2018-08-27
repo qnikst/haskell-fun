@@ -12,6 +12,7 @@
 
 static uint32_t procno = 0;
 
+StgClosure Entry_entry_closure;
 uint32_t __real_getNumberOfProcessors(void);
 
 uint32_t __wrap_getNumberOfProcessors(void)
@@ -80,6 +81,8 @@ int setcpus() {
 
 int main(int argc, char * argv[]) {
   setcpus();
+  int exit_status;
+  SchedulerStatus status;
   #if __GLASGOW_HASKELL__ >= 703
   {
      RtsConfig conf = defaultRtsConfig;
@@ -90,7 +93,31 @@ int main(int argc, char * argv[]) {
      hs_init(&argc, &argv);
   #endif
   hs_init(&argc, &argv);
-  entry();
+  {
+     Capability *cap = rts_lock();
+     rts_evalLazyIO(&cap, &Entry_entry_closure, NULL);
+     status = rts_getSchedStatus(cap);
+     rts_unlock(cap);
+  }
+  // check the status of the entire Haskell computation
+ switch (status) {
+    case Killed:
+        errorBelch("main thread exited (uncaught exception)");
+        exit_status = EXIT_KILLED;
+        break;
+    case Interrupted:
+        errorBelch("interrupted");
+        exit_status = EXIT_INTERRUPTED;
+        break;
+    case HeapExhausted:
+        exit_status = EXIT_HEAPOVERFLOW;
+        break;
+    case Success:
+        exit_status = EXIT_SUCCESS;
+        break;
+    default:
+        barf("main thread completed with invalid status");
+    }
   hs_exit();
   return 0;
 }

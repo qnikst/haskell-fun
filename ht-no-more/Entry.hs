@@ -1,4 +1,3 @@
-{-# LANGUAGE ForeignFunctionInterface #-}
 -- We can call this module Main due to
 --
 -- @
@@ -8,8 +7,6 @@
 module Entry where
 
 import Control.Concurrent
-
-foreign export ccall entry :: IO ()
 
 entry :: IO ()
 entry = print =<< getNumCapabilities
