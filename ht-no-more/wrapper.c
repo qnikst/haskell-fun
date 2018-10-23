@@ -44,26 +44,26 @@ int setcpus() {
    while(getdelim(&arg, &size, '\n', cpuinfo) != -1)
    {
       if (strstr(arg, "core id") != NULL) {
-	current_core++;
-	char * found = strchr(arg, ':');
-	if (found) {
-	   int cpu = atoi(found+1);
-	   if (current_cpu != cpu) {
+        current_core++;
+        char * found = strchr(arg, ':');
+        if (found) {
+           int cpu = atoi(found+1);
+           if (current_cpu != cpu) {
               current_cpu++;
-	      if (CPU_ISSET(current_core, &set)) {
-	         CPU_SET(current_core, &set);  // XXX: this is noop.
-	         fprintf(stderr, "%i real core - enabling\n", current_core);
-		 cpu_count++;
-	      } else {
-	         fprintf(stderr, "%i was disabled - skipping\n", current_core);
-	      }
+              if (CPU_ISSET(current_core, &set)) {
+                 CPU_SET(current_core, &set);  // XXX: this is noop.
+                 fprintf(stderr, "%i real core - enabling\n", current_core);
+                 cpu_count++;
+              } else {
+                 fprintf(stderr, "%i was disabled - skipping\n", current_core);
+              }
            } else {
               fprintf(stderr, "%i is virual - skipping\n", current_core);
-	      CPU_CLR(current_core, &set);
+              CPU_CLR(current_core, &set);
            }
         } else {
-	   return 1;
-	}
+           return 1;
+        }
       }
    }
    ret = sched_setaffinity(0, sizeof(cpu_set_t), &set);
