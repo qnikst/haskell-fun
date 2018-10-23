@@ -26,3 +26,13 @@ executable ht-no-more
   ghc-options:         -no-hs-main
                        -threaded
                        -optl-Wl,-wrap,getNumberOfProcessors
+
+--
+-- Just original bug https://ghc.haskell.org/trac/ghc/ticket/15746
+--
+executable bug15746
+  main-is:             Bug15746.hs
+  build-depends:       base >=4.10 && <4.12
+                       , bytestring
+  default-language:    Haskell2010
+  ghc-options:         -threaded -rtsopts
