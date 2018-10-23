@@ -16,7 +16,7 @@ executable ht-no-more
   main-is:             wrapper.c
   other-modules:       Entry 
   -- other-extensions:    
-  build-depends:       base >=4.10 && <4.11
+  build-depends:       base >=4.10 && <4.12
   -- hs-source-dirs:      
   default-language:    Haskell2010
 

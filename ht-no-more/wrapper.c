@@ -6,7 +6,7 @@
 #include "HsFFI.h"
 
 #ifdef __GLASGOW_HASKELL__
-#include "Entry_stub.h"
+//#include "Entry_stub.h"
 #include "Rts.h"
 #endif
 
