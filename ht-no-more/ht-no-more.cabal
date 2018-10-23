@@ -17,6 +17,7 @@ executable ht-no-more
   other-modules:       Entry 
   -- other-extensions:    
   build-depends:       base >=4.10 && <4.12
+                       , bytestring
   -- hs-source-dirs:      
   default-language:    Haskell2010
 

@@ -7,6 +7,19 @@
 module Entry where
 
 import Control.Concurrent
+import Data.ByteString.Builder.Extra (defaultChunkSize)
+import Data.Function
+import System.IO
+import qualified Data.ByteString as BS
 
 entry :: IO ()
-entry = print =<< getNumCapabilities
+entry = do
+    print =<< getNumCapabilities
+    h <- openFile "big_file" ReadMode
+    fix $ \loop -> do
+      bs <- BS.hGetSome h defaultChunkSize
+      if BS.null bs
+      then pure ()
+      else do
+        print bs
+        loop
