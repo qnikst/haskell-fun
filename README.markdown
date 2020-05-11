@@ -1,1 +1,1 @@
-# A repository with random haskell projects
+# A repository with random projects. 
