@@ -1,0 +1,84 @@
+GHC 8.4.3
+
+"big_file" generation:
+% yes "qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq" | head -n 1000000 > big_file
+
+CPU info: see cpuinfo_dmalkr.txt
+
+--- Results: ---
+
+
+bug15476 -N1: ok
+------------------------------------------------------------
+% cabal build bug15746 > /dev/null && /usr/bin/time dist/build/bug15746/bug15746 +RTS -M2M -N1 > /dev/null && echo ok
+0.60user 0.00system 0:00.52elapsed 117%CPU (0avgtext+0avgdata 5964maxresident)k
+0inputs+0outputs (0major+678minor)pagefaults 0swaps
+ok
+------------------------------------------------------------
+
+
+bug15476 -N2: fail
+------------------------------------------------------------
+% cabal build bug15746 > /dev/null && /usr/bin/time dist/build/bug15746/bug15746 +RTS -M2M -N2 > /dev/null && echo ok
+bug15746: Heap exhausted;
+bug15746: Current maximum heap size is 2097152 bytes (2 MB).
+bug15746: Use `+RTS -M<size>' to increase it.
+Command exited with non-zero status 251
+0.01user 0.00system 0:00.01elapsed 109%CPU (0avgtext+0avgdata 7000maxresident)k
+0inputs+0outputs (0major+508minor)pagefaults 0swaps
+------------------------------------------------------------
+
+
+ht-no-more -N1: ok
+------------------------------------------------------------
+% cabal build ht-no-more > /dev/null && /usr/bin/time dist/build/ht-no-more/ht-no-more +RTS -M2M -N1 > /dev/null && echo ok
+0 real core - enabling
+1 is virual - skipping
+2 real core - enabling
+3 is virual - skipping
+4 real core - enabling
+5 is virual - skipping
+6 real core - enabling
+7 is virual - skipping
+8 real core - enabling
+9 is virual - skipping
+10 real core - enabling
+11 is virual - skipping
+12 real core - enabling
+13 is virual - skipping
+14 real core - enabling
+15 is virual - skipping
+Define number of affinities as 8
+0.56user 0.00system 0:00.53elapsed 106%CPU (0avgtext+0avgdata 5932maxresident)k
+0inputs+0outputs (0major+678minor)pagefaults 0swaps
+ok
+------------------------------------------------------------
+
+
+ht-no-more -N2: fail
+------------------------------------------------------------
+0 real core - enabling
+1 is virual - skipping
+2 real core - enabling
+3 is virual - skipping
+4 real core - enabling
+5 is virual - skipping
+6 real core - enabling
+7 is virual - skipping
+8 real core - enabling
+9 is virual - skipping
+10 real core - enabling
+11 is virual - skipping
+12 real core - enabling
+13 is virual - skipping
+14 real core - enabling
+15 is virual - skipping
+Define number of affinities as 8
+ht-no-more: internal error: getTopHandlerThread: neither a WEAK nor a DEAD_WEAK: 0x6d3378 0x444450 2659416
+    (GHC version 8.4.3 for x86_64_unknown_linux)
+    Please report this as a GHC bug:  http://www.haskell.org/ghc/reportabug
+Command terminated by signal 6
+0.00user 0.00system 0:00.01elapsed 22%CPU (0avgtext+0avgdata 5012maxresident)k
+0inputs+0outputs (0major+499minor)pagefaults 0swaps
+------------------------------------------------------------
+
